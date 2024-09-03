@@ -1,0 +1,134 @@
+[
+    {
+        "ParameterKey": "ServiceAccountUserDN",
+        "ParameterValue": "UID=svcres,OU=Service Accounts,OU=General Accounts and Groups"
+    },
+    {
+        "ParameterKey": "InfrastructureHostSubnets",
+        "ParameterValue": "subnet-04090b46cf196b5b8,subnet-0fcde8c889d80feed,subnet-04bf07c85a38d9dd8"
+    },
+    {
+        "ParameterKey": "SharedHomeFileSystemId",
+        "ParameterValue": "fs-01e3b44ca048b1460"
+    },       
+    {
+        "ParameterKey": "SudoersGroupName",
+        "ParameterValue": "ResSudouers"
+    },
+    {
+        "ParameterKey": "IAMPermissionBoundary",
+        "ParameterValue": ""
+    },
+    {
+        "ParameterKey": "PrivateKeySecretARNforVDI",
+        "ParameterValue": "arn:aws:secretsmanager:eu-west-2:202435887288:secret:res-integration/vdi/certprivkey.pem-4Yl79y"
+    },
+    {
+        "ParameterKey": "CustomDomainNameforVDI",
+        "ParameterValue": "vdi.int.compute.app.crnet.org"
+    },
+    {
+        "ParameterKey": "ClientIp",
+        "ParameterValue": "143.65.196.0/28"
+    },
+    {
+        "ParameterKey": "ActiveDirectoryName",
+        "ParameterValue": "crwin.crnet.org"
+    },
+    {
+        "ParameterKey": "AdministratorEmail",
+        "ParameterValue": "ammar.rahman+admin@cancer.org.uk"
+    },
+    {
+        "ParameterKey": "GroupsOU",
+        "ParameterValue": "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org"
+    },
+    {
+        "ParameterKey": "ClientPrefixList",
+        "ParameterValue": "pl-018f0237023b3f563"
+    },
+    {
+        "ParameterKey": "InfrastructureHostAMI",
+        "ParameterValue": ""
+    },
+    {
+        "ParameterKey": "ServiceAccountPasswordSecretArn",
+        "ParameterValue": "arn:aws:secretsmanager:eu-west-2:202435887288:secret:ad-res-svc-act-11NM7M"
+    },
+    {
+        "ParameterKey": "CertificateSecretARNforVDI",
+        "ParameterValue": "arn:aws:secretsmanager:eu-west-2:202435887288:secret:res-integration/vdi/certcert.pem-XFoKCr"
+    },
+    {
+        "ParameterKey": "SSHKeyPair",
+        "ParameterValue": "Ammar-RSA"
+    },
+    {
+        "ParameterKey": "ACMCertificateARNforWebApp",
+        "ParameterValue": "arn:aws:acm:eu-west-2:202435887288:certificate/785b57eb-8e86-4954-9439-6f71dcc87d6c"
+    },
+    {
+        "ParameterKey": "ADShortName",
+        "ParameterValue": "crwin"
+    },
+    {
+        "ParameterKey": "EnableLdapIDMapping",
+        "ParameterValue": "True"
+    },
+    {
+        "ParameterKey": "EnvironmentName",
+        "ParameterValue": "res-int2408"
+    },
+    {
+        "ParameterKey": "ServiceAccountUsername",
+        "ParameterValue": "svcres"
+    },
+    {
+        "ParameterKey": "CustomDomainNameforWebApp",
+        "ParameterValue": "int.compute.app.crnet.org"
+    },
+    {
+        "ParameterKey": "SudoersOU",
+        "ParameterValue": "OU=Sudoers,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org"
+    },
+    {
+        "ParameterKey": "LDAPBase",
+        "ParameterValue": "OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org"
+    },
+    {
+        "ParameterKey": "LoadBalancerSubnets",
+        "ParameterValue": "subnet-01c0e033a4feb98b7,subnet-052d2f9fa64eabfef,subnet-0a54037c27d43f729"
+    },
+    {
+        "ParameterKey": "VpcId",
+        "ParameterValue": "vpc-05a956a3e89cc14ce"
+    },
+    {
+        "ParameterKey": "ComputersOU",
+        "ParameterValue": "OU=Computers,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org"
+    },
+    {
+        "ParameterKey": "DisableADJoin",
+        "ParameterValue": "False"
+    },
+    {
+        "ParameterKey": "DomainTLSCertificateSecretArn",
+        "ParameterValue": ""
+    },
+    {
+        "ParameterKey": "VdiSubnets",
+        "ParameterValue": "subnet-04090b46cf196b5b8,subnet-0fcde8c889d80feed,subnet-04bf07c85a38d9dd8"
+    },
+    {
+        "ParameterKey": "UsersOU",
+        "ParameterValue": "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org"
+    },
+    {
+        "ParameterKey": "IsLoadBalancerInternetFacing",
+        "ParameterValue": "true"
+    },
+    {
+        "ParameterKey": "LDAPConnectionURI",
+        "ParameterValue": "ldaps://crwin.crnet.org"
+    }
+]
