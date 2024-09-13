@@ -1,0 +1,4897 @@
+{
+  "Description": "RES_2024.8",
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "Environment and installer details"
+          },
+          "Parameters": [
+            "EnvironmentName",
+            "AdministratorEmail",
+            "InfrastructureHostAMI",
+            "SSHKeyPair",
+            "ClientIp",
+            "ClientPrefixList",
+            "IAMPermissionBoundary"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Network configuration for the RES environment"
+          },
+          "Parameters": [
+            "VpcId",
+            "IsLoadBalancerInternetFacing",
+            "LoadBalancerSubnets",
+            "InfrastructureHostSubnets",
+            "VdiSubnets"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Active Directory details"
+          },
+          "Parameters": [
+            "ActiveDirectoryName",
+            "ADShortName",
+            "LDAPBase",
+            "LDAPConnectionURI",
+            "ServiceAccountUsername",
+            "ServiceAccountPasswordSecretArn",
+            "UsersOU",
+            "GroupsOU",
+            "SudoersOU",
+            "SudoersGroupName",
+            "ComputersOU",
+            "DomainTLSCertificateSecretArn",
+            "EnableLdapIDMapping",
+            "DisableADJoin",
+            "ServiceAccountUserDN"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Shared Storage details"
+          },
+          "Parameters": [
+            "SharedHomeFileSystemId"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Custom domain details, only needed if you would like to use a custom domain"
+          },
+          "Parameters": [
+            "CustomDomainNameforWebApp",
+            "CustomDomainNameforVDI",
+            "ACMCertificateARNforWebApp",
+            "CertificateSecretARNforVDI",
+            "PrivateKeySecretARNforVDI"
+          ]
+        }
+      ]
+    }
+  },
+  "Parameters": {
+    "SharedHomeFileSystemId": {
+      "Type": "String",
+      "AllowedPattern": "fs-[0-9a-f]{17}",
+      "ConstraintDescription": "SharedHomeFileSystemId must begin with 'fs-', only contain letters (a-f) or numbers(0-9) and must be 20 characters in length",
+      "Description": "Please provide id of a home file system to be mounted on all VDI instances."
+    },
+    "ActiveDirectoryName": {
+      "Type": "String",
+      "AllowedPattern": "(?=^.{4,253}$)(^((?!-)[a-zA-Z0-9-]{1,63}(?<!-)\\.)+[a-zA-Z]{2,63}$)",
+      "Description": "Please provide the Fully Qualified Domain Name (FQDN) for your Active Directory. For example, developer.res.hpc.aws.dev"
+    },
+    "LDAPBase": {
+      "Type": "String",
+      "AllowedPattern": ".+",
+      "Description": "Please provide the Active Directory base string Distinguished Name (DN) For example, dc=developer,dc=res,dc=hpc,dc=aws,dc=dev"
+    },
+    "ADShortName": {
+      "Type": "String",
+      "AllowedPattern": ".+",
+      "Description": "Please provide the short name in Active directory"
+    },
+    "LDAPConnectionURI": {
+      "Type": "String",
+      "AllowedPattern": ".+",
+      "Description": "Please provide the active directory connection URI (e.g. ldap://www.example.com)"
+    },
+    "UsersOU": {
+      "Type": "String",
+      "AllowedPattern": ".+",
+      "Description": "Please provide Users Organization Unit in your active directory for example, OU=Users,DC=RES,DC=example,DC=internal"
+    },
+    "GroupsOU": {
+      "Type": "String",
+      "AllowedPattern": ".+",
+      "Description": "Please provide user groups Oganization Unit in your active directory"
+    },
+    "ComputersOU": {
+      "Type": "String",
+      "AllowedPattern": ".+",
+      "Description": "Please provide Organization Unit for compute and storage servers in your active directory"
+    },
+    "SudoersOU": {
+      "Type": "String",
+      "AllowedPattern": ".+",
+      "Description": "Please provide Organizal Unit for users who will be able to sudo in your active directory"
+    },
+    "SudoersGroupName": {
+      "Type": "String",
+      "AllowedPattern": ".+",
+      "Description": "Please provide group name of users who will be able to sudo in your active directory"
+    },
+    "ServiceAccountUsername": {
+      "Type": "String",
+      "AllowedPattern": ".+",
+      "Description": "Directory Service Root (Service Account) username",
+      "NoEcho": true
+    },
+    "ServiceAccountPasswordSecretArn": {
+      "Type": "String",
+      "AllowedPattern": "^(?:arn:(?:aws|aws-us-gov|aws-cn):secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:[A-Za-z0-9\\-\\_\\+\\=\\/\\.\\@]{1,519})?$",
+      "Description": "Directory Service Root (Service Account) Password Secret ARN"
+    },
+    "DomainTLSCertificateSecretArn": {
+      "Type": "String",
+      "Description": "(Optional) AD Domain TLS Certificate Secret ARN"
+    },
+    "EnableLdapIDMapping": {
+      "Type": "String",
+      "AllowedValues": [
+        "True",
+        "False"
+      ],
+      "Description": "Set to False to use the uidNumbers and gidNumbers for users and group from the provided AD. Otherwise set to True."
+    },
+    "DisableADJoin": {
+      "Type": "String",
+      "AllowedValues": [
+        "True",
+        "False"
+      ],
+      "Description": "Set to True to prevent linux hosts from joining the Directory Domain. Otherwise set to False"
+    },
+    "ServiceAccountUserDN": {
+      "Type": "String",
+      "AllowedPattern": ".+",
+      "Description": "Provide the Distinguished name (DN) of the service account user in the Active Directory",
+      "NoEcho": true
+    },
+    "CustomDomainNameforWebApp": {
+      "Type": "String",
+      "Description": "You may provide a custom domain name for web user interface, instead of default under amazonaws.com."
+    },
+    "CustomDomainNameforVDI": {
+      "Type": "String",
+      "Description": "You may provide a custom domain name for VDI, instead of default under amazonaws.com."
+    },
+    "ACMCertificateARNforWebApp": {
+      "Type": "String",
+      "Description": "If you have provided a custom domain name for Web UI above then please provide the Amazon Resource Name (ARN) for the corresponding certificate stored in Amazon Certificate Manager (ACM)."
+    },
+    "CertificateSecretARNforVDI": {
+      "Type": "String",
+      "Description": "If you have provided a custom domain name for VDI above then please provide the Amazon Resource Name (ARN) for the certificate secret stored in AWS Secret Manager (ASM)."
+    },
+    "PrivateKeySecretARNforVDI": {
+      "Type": "String",
+      "Description": "If you have provided custom domain name for VDI above then please provide Amazon Resource Name (ARN) for the private key of the certificate stored in AWS Secret Manager (ASM)."
+    },
+    "SSHKeyPair": {
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "AllowedPattern": ".+",
+      "Description": "Default SSH keys, registered in EC2 that can be used to SSH into environment instances."
+    },
+    "ClientIp": {
+      "Type": "String",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription": "ClientIP must be a valid IP or network range of the form x.x.x.x/x. specify your IP/NETMASK (e.g x.x.x/32 or x.x.x.x/24 for subnet range)",
+      "Description": "Default IP(s) allowed to directly access the Web UI and SSH into the bastion host. We recommend that you restrict it with your own IP/subnet (x.x.x.x/32 for your own ip or x.x.x.x/24 for range. Replace x.x.x.x with your own PUBLIC IP. You can get your public IP using tools such as https://ifconfig.co/)."
+    },
+    "ClientPrefixList": {
+      "Type": "String",
+      "AllowedPattern": "^(pl-[a-z0-9]{8,20})?$",
+      "ConstraintDescription": "Must be a valid prefix list ID, which starts with 'pl-'.  These can be found either by navigating to the VPC console, or by calling ec2:DescribePrefixLists",
+      "Description": "(Optional) A prefix list that covers IPs allowed to directly access the Web UI and SSH into the bastion host."
+    },
+    "EnvironmentName": {
+      "Type": "String",
+      "AllowedPattern": "res-[A-Za-z\\-\\_0-9]{0,7}",
+      "ConstraintDescription": "The name of the environment must start with \"res-\" and should be less than or equal to 11 characters.",
+      "Description": "Provide name of the Environment, the name of the environment must start with \"res-\" and should be less than or equal to 11 characters."
+    },
+    "AdministratorEmail": {
+      "Type": "String",
+      "AllowedPattern": "(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$|^$)",
+      "ConstraintDescription": "AdministratorEmail must be a valid email id"
+    },
+    "IAMPermissionBoundary": {
+      "Type": "String",
+      "AllowedPattern": "^(?:arn:(?:aws|aws-us-gov|aws-cn):iam::[0-9]{12}:policy/[A-Za-z0-9\\-\\_\\+\\=\\,\\.\\@]{1,128})?$",
+      "ConstraintDescription": "The IAM permission boundary must be a valid ARN.",
+      "Description": "(Optional) You may provide an IAM permission boundary ARN that will be attached to all roles created in RES."
+    },
+    "InfrastructureHostAMI": {
+      "Type": "String",
+      "AllowedPattern": "^(ami-[0-9a-f]{8,17})?$",
+      "ConstraintDescription": "The AMI id must begin with 'ami-' followed by only letters (a-f) or numbers(0-9).",
+      "Description": "(Optional) You may provide a custom AMI id to use for all the infrastructure hosts. The current supported base OS is Amazon Linux 2."
+    },
+    "VpcId": {
+      "Type": "AWS::EC2::VPC::Id",
+      "AllowedPattern": "vpc-[0-9a-f]{17}",
+      "ConstraintDescription": "VpcId must begin with 'vpc-', only contain letters (a-f) or numbers(0-9) and must be 21 characters in length"
+    },
+    "LoadBalancerSubnets": {
+      "Type": "List<AWS::EC2::Subnet::Id>",
+      "AllowedPattern": ".+",
+      "Description": "Select at least 2 subnets from different Availability Zones. For deployments that need restricted internet access, select private subnets. For deployments that need internet access, select public subnets."
+    },
+    "InfrastructureHostSubnets": {
+      "Type": "List<AWS::EC2::Subnet::Id>",
+      "AllowedPattern": ".+",
+      "Description": "Select at least 2 private subnets from different Availability Zones."
+    },
+    "VdiSubnets": {
+      "Type": "List<AWS::EC2::Subnet::Id>",
+      "AllowedPattern": ".+",
+      "Description": "Select at least 2 private subnets from different Availability Zones."
+    },
+    "IsLoadBalancerInternetFacing": {
+      "Type": "String",
+      "AllowedValues": [
+        "true",
+        "false"
+      ],
+      "Description": "Select true to deploy internet facing load balancer (Requires public subnets for load balancer). For deployments that need restricted internet access, select false."
+    }
+  },
+  "Resources": {
+    "SettingsKinesisStream0DE3857B": {
+      "Type": "AWS::Kinesis::Stream",
+      "Properties": {
+        "Name": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "EnvironmentName"
+              },
+              ".cluster-settings-kinesis-stream"
+            ]
+          ]
+        },
+        "RetentionPeriodHours": 24,
+        "StreamEncryption": {
+          "EncryptionType": "KMS",
+          "KeyId": "alias/aws/kinesis"
+        },
+        "StreamModeDetails": {
+          "StreamMode": "ON_DEMAND"
+        },
+        "Tags": [
+          {
+            "Key": "res:EnvironmentName",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/SettingsKinesisStream/Resource"
+      }
+    },
+    "Settings1CCB6159": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "key",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "KeySchema": [
+          {
+            "AttributeName": "key",
+            "KeyType": "HASH"
+          }
+        ],
+        "KinesisStreamSpecification": {
+          "StreamArn": {
+            "Fn::GetAtt": [
+              "SettingsKinesisStream0DE3857B",
+              "Arn"
+            ]
+          }
+        },
+        "TableName": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "EnvironmentName"
+              },
+              ".cluster-settings"
+            ]
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "res:EnvironmentName",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain",
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Settings/Resource"
+      }
+    },
+    "Modules4DFF54DF": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "module_id",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "KeySchema": [
+          {
+            "AttributeName": "module_id",
+            "KeyType": "HASH"
+          }
+        ],
+        "TableName": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "EnvironmentName"
+              },
+              ".modules"
+            ]
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "res:BackupPlan",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Ref": "EnvironmentName"
+                  },
+                  "-cluster"
+                ]
+              ]
+            }
+          },
+          {
+            "Key": "res:EnvironmentName",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain",
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Modules/Resource"
+      }
+    },
+    "DirectoryServiceSecretServiceAccountUsername1BF50E25": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "Name": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "EnvironmentName"
+              },
+              "-directoryservice-ServiceAccountUsername"
+            ]
+          ]
+        },
+        "SecretString": {
+          "Ref": "ServiceAccountUsername"
+        },
+        "Tags": [
+          {
+            "Key": "res:EnvironmentName",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "res:ModuleId",
+            "Value": "directoryservice"
+          },
+          {
+            "Key": "res:ModuleName",
+            "Value": "directoryservice"
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/DirectoryServiceSecretServiceAccountUsername/Resource"
+      }
+    },
+    "DirectoryServiceSecretServiceAccountUserDNF2D1CA4E": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "Name": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "EnvironmentName"
+              },
+              "-directoryservice-ServiceAccountUserDN"
+            ]
+          ]
+        },
+        "SecretString": {
+          "Ref": "ServiceAccountUserDN"
+        },
+        "Tags": [
+          {
+            "Key": "res:EnvironmentName",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          },
+          {
+            "Key": "res:ModuleId",
+            "Value": "directoryservice"
+          },
+          {
+            "Key": "res:ModuleName",
+            "Value": "directoryservice"
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/DirectoryServiceSecretServiceAccountUserDN/Resource"
+      }
+    },
+    "InstallerInstallerEcrRepo8D809CEA": {
+      "Type": "AWS::ECR::Repository",
+      "Properties": {
+        "RepositoryName": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "EnvironmentName"
+              },
+              "-installer-ecr"
+            ]
+          ]
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/InstallerEcrRepo/Resource"
+      }
+    },
+    "InstallerInstallerEcrPush960C0AE6": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "codebuild.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PermissionsBoundary": {
+          "Fn::If": [
+            "PermissionBoundaryProvided",
+            {
+              "Ref": "IAMPermissionBoundary"
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/InstallerEcrPush/Resource"
+      }
+    },
+    "InstallerInstallerEcrPushDefaultPolicy718725C7": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:CompleteLayerUpload",
+                "ecr:InitiateLayerUpload",
+                "ecr:PutImage",
+                "ecr:UploadLayerPart"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "InstallerInstallerEcrRepo8D809CEA",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": "ecr:GetAuthorizationToken",
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "InstallerInstallerEcrPushDefaultPolicy718725C7",
+        "Roles": [
+          {
+            "Ref": "InstallerInstallerEcrPush960C0AE6"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/InstallerEcrPush/DefaultPolicy/Resource"
+      }
+    },
+    "InstallerInstallerEcrPullEAD89DE7": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PermissionsBoundary": {
+          "Fn::If": [
+            "PermissionBoundaryProvided",
+            {
+              "Ref": "IAMPermissionBoundary"
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/InstallerEcrPull/Resource"
+      }
+    },
+    "InstallerInstallerEcrPullDefaultPolicy76F7C888": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:BatchGetImage",
+                "ecr:GetDownloadUrlForLayer"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "InstallerInstallerEcrRepo8D809CEA",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": "ecr:GetAuthorizationToken",
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "InstallerInstallerEcrPullDefaultPolicy76F7C888",
+        "Roles": [
+          {
+            "Ref": "InstallerInstallerEcrPullEAD89DE7"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/InstallerEcrPull/DefaultPolicy/Resource"
+      }
+    },
+    "InstallerCustomResourceEventHandlerServiceRole1092BCCA": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "PermissionsBoundary": {
+          "Fn::If": [
+            "PermissionBoundaryProvided",
+            {
+              "Ref": "IAMPermissionBoundary"
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/CustomResourceEventHandler/ServiceRole/Resource"
+      }
+    },
+    "InstallerCustomResourceEventHandlerServiceRoleDefaultPolicy42CAD6CC": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "states:StartExecution",
+              "Effect": "Allow",
+              "Resource": {
+                "Ref": "InstallerInstallerStateMachineEAA7045D"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "InstallerCustomResourceEventHandlerServiceRoleDefaultPolicy42CAD6CC",
+        "Roles": [
+          {
+            "Ref": "InstallerCustomResourceEventHandlerServiceRole1092BCCA"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/CustomResourceEventHandler/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "InstallerCustomResourceEventHandlerA89E1A8A": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Fn::Sub": "research-engineering-studio-${AWS::Region}"
+          },
+          "S3Key": "releases/2024.08/e3b3e44615457c7daae93d212682970148907fe598b9dae9282ebc80f1e0d679.zip"
+        },
+        "Description": "Lambda to handle the CFN custom resource events",
+        "Environment": {
+          "Variables": {
+            "SFN_ARN": {
+              "Ref": "InstallerInstallerStateMachineEAA7045D"
+            }
+          }
+        },
+        "Handler": "handlers.handle_custom_resource_lifecycle_event",
+        "Role": {
+          "Fn::GetAtt": [
+            "InstallerCustomResourceEventHandlerServiceRole1092BCCA",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 10
+      },
+      "DependsOn": [
+        "InstallerCustomResourceEventHandlerServiceRoleDefaultPolicy42CAD6CC",
+        "InstallerCustomResourceEventHandlerServiceRole1092BCCA"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/CustomResourceEventHandler/Resource",
+        "aws:asset:path": "asset.e3b3e44615457c7daae93d212682970148907fe598b9dae9282ebc80f1e0d679",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "InstallerInstallerWaitConditionHandle17248959950C849026": {
+      "Type": "AWS::CloudFormation::WaitConditionHandle",
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/InstallerWaitConditionHandle1724895995"
+      }
+    },
+    "Installer0D856A54": {
+      "Type": "Custom::RES",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "InstallerCustomResourceEventHandlerA89E1A8A",
+            "Arn"
+          ]
+        },
+        "CALLBACK_URL": {
+          "Ref": "InstallerInstallerWaitConditionHandle17248959950C849026"
+        },
+        "INSTALLER_ECR_REPO_NAME": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "EnvironmentName"
+              },
+              "-installer-ecr"
+            ]
+          ]
+        },
+        "ENVIRONMENT_NAME": {
+          "Ref": "EnvironmentName"
+        }
+      },
+      "DependsOn": [
+        "InstallerInstallerStateMachineEAA7045D",
+        "InstallerInstallerStateMachineRoleDefaultPolicyC7A52C7D",
+        "InstallerInstallerStateMachineRole6DA34EFE",
+        "InstallerTasksClusterA78B7F2B",
+        "InstallerTasksCreateSecurityGroup514FFF0D",
+        "InstallerTasksCreateTaskDefCreateContainerLogGroupB0BB7610",
+        "InstallerTasksCreateTaskDef12809FCD",
+        "InstallerTasksDeleteSecurityGroupD7708443",
+        "InstallerTasksDeleteTaskDefDeleteContainerLogGroup20006B67",
+        "InstallerTasksDeleteTaskDefDDA0ECF3",
+        "InstallerTasksPermissionsPipelineRoleDefaultPolicy8E41116D",
+        "InstallerTasksPermissionsPipelineRoleD0D276F9",
+        "InstallerTasksUpdateSecurityGroup3269C5D9",
+        "InstallerTasksUpdateTaskDef1EDBDB9C",
+        "InstallerTasksUpdateTaskDefUpdateContainerLogGroupF3D746B9",
+        "Modules4DFF54DF",
+        "Settings1CCB6159"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Installer/Default"
+      }
+    },
+    "InstallerInstallerWaitCondition17248959956287CA76": {
+      "Type": "AWS::CloudFormation::WaitCondition",
+      "Properties": {
+        "Count": 1,
+        "Handle": {
+          "Ref": "InstallerInstallerWaitConditionHandle17248959950C849026"
+        },
+        "Timeout": "7200"
+      },
+      "DependsOn": [
+        "Installer0D856A54"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/InstallerWaitCondition1724895995"
+      }
+    },
+    "InstallerTasksClusterA78B7F2B": {
+      "Type": "AWS::ECS::Cluster",
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/Cluster/Resource"
+      }
+    },
+    "InstallerTasksPermissionsPipelineRoleD0D276F9": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "ArnLike": {
+                  "aws:SourceArn": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:",
+                        {
+                          "Ref": "AWS::Partition"
+                        },
+                        ":ecs:",
+                        {
+                          "Ref": "AWS::Region"
+                        },
+                        ":",
+                        {
+                          "Ref": "AWS::AccountId"
+                        },
+                        ":*"
+                      ]
+                    ]
+                  }
+                },
+                "StringEquals": {
+                  "aws:SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PermissionsBoundary": {
+          "Fn::If": [
+            "PermissionBoundaryProvided",
+            {
+              "Ref": "IAMPermissionBoundary"
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "RoleName": {
+          "Fn::Join": [
+            "",
+            [
+              "Admin-",
+              {
+                "Ref": "EnvironmentName"
+              },
+              "-PipelineRole"
+            ]
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/Permissions/PipelineRole/Resource"
+      }
+    },
+    "InstallerTasksPermissionsPipelineRoleDefaultPolicy8E41116D": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "cloudformation:CreateChangeSet",
+                "cloudformation:DescribeChangeSet",
+                "cloudformation:DescribeStackEvents",
+                "cloudformation:ExecuteChangeSet",
+                "cloudformation:UpdateTerminationProtection"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":cloudformation:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":stack/",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    "-*/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "cloudformation:DescribeStacks",
+                "cloudformation:ListStacks",
+                "cloudwatch:DescribeAlarms",
+                "ec2:DescribeInstances",
+                "ec2:DescribeSubnets",
+                "ecr:GetAuthorizationToken",
+                "elasticloadbalancing:DescribeListeners",
+                "elasticloadbalancing:DescribeTargetGroups",
+                "lambda:ListFunctions",
+                "lambda:ListTags",
+                "s3:ListAllMyBuckets",
+                "ssm:ListCommandInvocations",
+                "sts:GetCallerIdentity"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "dynamodb:DeleteTable",
+                "dynamodb:DescribeTable",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:UpdateItem"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":dynamodb:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":table/",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    ".*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "ecr:BatchGetImage",
+                "ecr:DescribeRepositories",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:GetLifecyclePolicy",
+                "ecr:GetRepositoryPolicy",
+                "ecr:ListTagsForResource"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":ecr:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":repository/",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    "-installer-ecr"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "ecr:CreateRepository",
+                "ecr:DescribeRepositories",
+                "ecr:SetRepositoryPolicy",
+                "ecr:TagResource"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "aws:ResourceTag/res:EnvironmentName": {
+                    "Ref": "EnvironmentName"
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":ecr:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":repository/cdk-*-container-assets-",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    "-",
+                    {
+                      "Ref": "AWS::Region"
+                    }
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:BatchGetImage",
+                "ecr:GetDownloadUrlForLayer"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":ecr:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":*:repository/aws-guardduty-agent-fargate"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "iam:AttachRolePolicy",
+                "iam:CreateRole",
+                "iam:GetRole",
+                "iam:GetRolePolicy",
+                "iam:ListAttachedRolePolicies",
+                "iam:ListRolePolicies",
+                "iam:PutRolePolicy",
+                "iam:TagRole",
+                "sts:AssumeRole"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":iam::",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":role/cdk-*-role-",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    "-",
+                    {
+                      "Ref": "AWS::Region"
+                    }
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "s3:CreateBucket",
+                "s3:DeleteBucket",
+                "s3:DeleteBucketPolicy",
+                "s3:GetAccelerateConfiguration",
+                "s3:GetAnalyticsConfiguration",
+                "s3:GetBucketAcl",
+                "s3:GetBucketCORS",
+                "s3:GetBucketLogging",
+                "s3:GetBucketNotification",
+                "s3:GetBucketObjectLockConfiguration",
+                "s3:GetBucketOwnershipControls",
+                "s3:GetBucketPolicy",
+                "s3:GetBucketPublicAccessBlock",
+                "s3:GetBucketTagging",
+                "s3:GetBucketVersioning",
+                "s3:GetBucketWebsite",
+                "s3:GetEncryptionConfiguration",
+                "s3:GetIntelligentTieringConfiguration",
+                "s3:GetInventoryConfiguration",
+                "s3:GetLifecycleConfiguration",
+                "s3:GetMetricsConfiguration",
+                "s3:GetReplicationConfiguration",
+                "s3:ListBucketVersions",
+                "s3:PutBucketAcl",
+                "s3:PutBucketLogging",
+                "s3:PutBucketPolicy",
+                "s3:PutBucketPublicAccessBlock",
+                "s3:PutBucketTagging",
+                "s3:PutBucketVersioning",
+                "s3:PutEncryptionConfiguration"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "EnvironmentName"
+                      },
+                      "-cluster-",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "-",
+                      {
+                        "Ref": "AWS::AccountId"
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::log-",
+                      {
+                        "Ref": "EnvironmentName"
+                      },
+                      "-cluster-",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "-",
+                      {
+                        "Ref": "AWS::AccountId"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:DeleteObjectVersion",
+                "s3:PutObject"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "EnvironmentName"
+                      },
+                      "-cluster-",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "-",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      "/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::log-",
+                      {
+                        "Ref": "EnvironmentName"
+                      },
+                      "-cluster-",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "-",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "ssm:AddTagsToResource",
+                "ssm:DeleteParameter",
+                "ssm:GetParameters",
+                "ssm:PutParameter"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "aws:ResourceTag/res:EnvironmentName": {
+                    "Ref": "EnvironmentName"
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":ssm:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":parameter/cdk-bootstrap/*/version"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "cloudformation:DeleteStack",
+                "cloudformation:UpdateTerminationProtection"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "aws:ResourceTag/res:EnvironmentName": {
+                    "Ref": "EnvironmentName"
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":cloudformation:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":stack/",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    "-*/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "dynamodb:ListTables",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":dynamodb:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":table/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "ecr:DeleteRepository",
+              "Condition": {
+                "StringEquals": {
+                  "aws:ResourceTag/res:EnvironmentName": {
+                    "Ref": "EnvironmentName"
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":ecr:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":repository/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "ec2:DescribeInstanceAttribute",
+                "ec2:TerminateInstances",
+                "ssm:SendCommand"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "aws:ResourceTag/res:EnvironmentName": {
+                    "Ref": "EnvironmentName"
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":ec2:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":instance/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "lambda:UpdateFunctionConfiguration",
+              "Condition": {
+                "StringEquals": {
+                  "aws:ResourceTag/res:EnvironmentName": {
+                    "Ref": "EnvironmentName"
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":lambda:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":function:*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "iam:DeleteRole",
+                "iam:DeleteRolePolicy",
+                "iam:DetachRolePolicy",
+                "iam:GetRole",
+                "iam:ListAttachedRolePolicies",
+                "iam:ListRolePolicies"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "aws:ResourceTag/res:EnvironmentName": {
+                    "Ref": "EnvironmentName"
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":iam::",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":role/cdk-*-role-",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    "-",
+                    {
+                      "Ref": "AWS::Region"
+                    }
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "cloudwatch:DeleteAlarms",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":cloudwatch:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":alarm:TargetTracking-table/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "ssm:SendCommand",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":ssm:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "::document/AWS-RunShellScript"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "InstallerTasksCreateTaskDefCreateContainerLogGroupB0BB7610",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "InstallerTasksDeleteTaskDefDeleteContainerLogGroup20006B67",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "InstallerTasksUpdateTaskDefUpdateContainerLogGroupF3D746B9",
+                    "Arn"
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "InstallerTasksPermissionsPipelineRoleDefaultPolicy8E41116D",
+        "Roles": [
+          {
+            "Ref": "InstallerTasksPermissionsPipelineRoleD0D276F9"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/Permissions/PipelineRole/DefaultPolicy/Resource"
+      }
+    },
+    "InstallerTasksCopyImageToInstallerEcrRole7D451D19": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "codebuild.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PermissionsBoundary": {
+          "Fn::If": [
+            "PermissionBoundaryProvided",
+            {
+              "Ref": "IAMPermissionBoundary"
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/CopyImageToInstallerEcr/Role/Resource"
+      }
+    },
+    "InstallerTasksCopyImageToInstallerEcrRoleDefaultPolicyC202D4F0": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":logs:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":log-group:/aws/codebuild/",
+                      {
+                        "Ref": "InstallerTasksCopyImageToInstallerEcrFC02DD2F"
+                      },
+                      ":*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":logs:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":log-group:/aws/codebuild/",
+                      {
+                        "Ref": "InstallerTasksCopyImageToInstallerEcrFC02DD2F"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "codebuild:BatchPutCodeCoverages",
+                "codebuild:BatchPutTestCases",
+                "codebuild:CreateReport",
+                "codebuild:CreateReportGroup",
+                "codebuild:UpdateReport"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":codebuild:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":report-group/",
+                    {
+                      "Ref": "InstallerTasksCopyImageToInstallerEcrFC02DD2F"
+                    },
+                    "-*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "ecr:GetAuthorizationToken",
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": "ecr:*",
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:BatchGetImage",
+                "ecr:CompleteLayerUpload",
+                "ecr:DescribeImages",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:InitiateLayerUpload",
+                "ecr:ListImages",
+                "ecr:PutImage",
+                "ecr:UploadLayerPart"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":ecr:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":repository/",
+                    {
+                      "Fn::Select": [
+                        0,
+                        {
+                          "Fn::Split": [
+                            ":",
+                            {
+                              "Fn::Select": [
+                                1,
+                                {
+                                  "Fn::Split": [
+                                    "/",
+                                    {
+                                      "Fn::Join": [
+                                        ":",
+                                        [
+                                          {
+                                            "Fn::Join": [
+                                              "",
+                                              [
+                                                {
+                                                  "Fn::Select": [
+                                                    4,
+                                                    {
+                                                      "Fn::Split": [
+                                                        ":",
+                                                        {
+                                                          "Fn::GetAtt": [
+                                                            "InstallerInstallerEcrRepo8D809CEA",
+                                                            "Arn"
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                },
+                                                ".dkr.ecr.",
+                                                {
+                                                  "Fn::Select": [
+                                                    3,
+                                                    {
+                                                      "Fn::Split": [
+                                                        ":",
+                                                        {
+                                                          "Fn::GetAtt": [
+                                                            "InstallerInstallerEcrRepo8D809CEA",
+                                                            "Arn"
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                },
+                                                ".",
+                                                {
+                                                  "Ref": "AWS::URLSuffix"
+                                                },
+                                                "/",
+                                                {
+                                                  "Ref": "InstallerInstallerEcrRepo8D809CEA"
+                                                }
+                                              ]
+                                            ]
+                                          },
+                                          "2024.08-d09c2666"
+                                        ]
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "InstallerTasksCopyImageToInstallerEcrRoleDefaultPolicyC202D4F0",
+        "Roles": [
+          {
+            "Ref": "InstallerTasksCopyImageToInstallerEcrRole7D451D19"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/CopyImageToInstallerEcr/Role/DefaultPolicy/Resource"
+      }
+    },
+    "InstallerTasksCopyImageToInstallerEcrFC02DD2F": {
+      "Type": "AWS::CodeBuild::Project",
+      "Properties": {
+        "Artifacts": {
+          "Type": "NO_ARTIFACTS"
+        },
+        "Cache": {
+          "Type": "NO_CACHE"
+        },
+        "EncryptionKey": "alias/aws/s3",
+        "Environment": {
+          "ComputeType": "BUILD_GENERAL1_SMALL",
+          "EnvironmentVariables": [
+            {
+              "Name": "AWS_REGION",
+              "Type": "PLAINTEXT",
+              "Value": {
+                "Ref": "AWS::Region"
+              }
+            },
+            {
+              "Name": "INSTALLER_REPO_URI",
+              "Type": "PLAINTEXT",
+              "Value": {
+                "Fn::Join": [
+                  ":",
+                  [
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          {
+                            "Fn::Select": [
+                              4,
+                              {
+                                "Fn::Split": [
+                                  ":",
+                                  {
+                                    "Fn::GetAtt": [
+                                      "InstallerInstallerEcrRepo8D809CEA",
+                                      "Arn"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          ".dkr.ecr.",
+                          {
+                            "Fn::Select": [
+                              3,
+                              {
+                                "Fn::Split": [
+                                  ":",
+                                  {
+                                    "Fn::GetAtt": [
+                                      "InstallerInstallerEcrRepo8D809CEA",
+                                      "Arn"
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          ".",
+                          {
+                            "Ref": "AWS::URLSuffix"
+                          },
+                          "/",
+                          {
+                            "Ref": "InstallerInstallerEcrRepo8D809CEA"
+                          }
+                        ]
+                      ]
+                    },
+                    "2024.08-d09c2666"
+                  ]
+                ]
+              }
+            },
+            {
+              "Name": "PROVIDED_REPO_URI",
+              "Type": "PLAINTEXT",
+              "Value": "202435887288.dkr.ecr.eu-west-2.amazonaws.com/research-engineering-studio-edited:latest"
+            }
+          ],
+          "Image": "aws/codebuild/amazonlinux2-x86_64-standard:5.0",
+          "ImagePullCredentialsType": "CODEBUILD",
+          "PrivilegedMode": false,
+          "Type": "LINUX_CONTAINER"
+        },
+        "Name": {
+          "Fn::Join": [
+            "-",
+            [
+              {
+                "Ref": "EnvironmentName"
+              },
+              "copyImageToInstallerEcr"
+            ]
+          ]
+        },
+        "ServiceRole": {
+          "Fn::GetAtt": [
+            "InstallerTasksCopyImageToInstallerEcrRole7D451D19",
+            "Arn"
+          ]
+        },
+        "Source": {
+          "BuildSpec": "{\n  \"version\": \"0.2\",\n  \"phases\": {\n    \"build\": {\n      \"commands\": [\n        \"aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${PROVIDED_REPO_URI}\",\n        \"docker pull ${PROVIDED_REPO_URI}\",\n        \"docker tag ${PROVIDED_REPO_URI} ${INSTALLER_REPO_URI}\",\n        \"aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${INSTALLER_REPO_URI}\",\n        \"docker push ${INSTALLER_REPO_URI}\"\n      ]\n    }\n  }\n}",
+          "Type": "NO_SOURCE"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/CopyImageToInstallerEcr/Resource"
+      }
+    },
+    "InstallerTasksCreateTaskDef12809FCD": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ContainerDefinitions": [
+          {
+            "Command": [
+              "/bin/sh",
+              "-c",
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    "/bin/sh -ex <<'EOC'\nres-admin --version\nres-admin config show --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\ncat <<EOF > values.yml\n_regenerate: false\naws_partition: ",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    "\naws_region: ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\naws_account_id: '",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    "'\naws_dns_suffix: ",
+                    {
+                      "Ref": "AWS::URLSuffix"
+                    },
+                    "\ncluster_name: ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    "\nadministrator_email: ",
+                    {
+                      "Ref": "AdministratorEmail"
+                    },
+                    "\nssh_key_pair_name: ",
+                    {
+                      "Ref": "SSHKeyPair"
+                    },
+                    "\nclient_ip:\n- ",
+                    {
+                      "Ref": "ClientIp"
+                    },
+                    "\nprefix_list_ids:\n- ",
+                    {
+                      "Ref": "ClientPrefixList"
+                    },
+                    "\npermission_boundary_arn: ",
+                    {
+                      "Ref": "IAMPermissionBoundary"
+                    },
+                    "\nalb_public: ",
+                    {
+                      "Ref": "IsLoadBalancerInternetFacing"
+                    },
+                    "\nuse_vpc_endpoints: false\ndirectory_service_provider: activedirectory\nenable_aws_backup: false\nkms_key_type: aws-managed\nuse_existing_vpc: true\nstorage_home_provider: efs\nuse_existing_home_fs: true\nexisting_home_fs_id: ",
+                    {
+                      "Ref": "SharedHomeFileSystemId"
+                    },
+                    "\nvpc_id: ",
+                    {
+                      "Ref": "VpcId"
+                    },
+                    "\nexisting_resources:\n- subnets:public\n- subnets:private\n- subnets:external_load_balancer\n- subnets:infrastructure_hosts\n- subnets:dcv_session\n- shared-storage:home\nload_balancer_subnet_ids:\n$(echo \"",
+                    {
+                      "Fn::Join": [
+                        ",",
+                        {
+                          "Ref": "LoadBalancerSubnets"
+                        }
+                      ]
+                    },
+                    "\" | tr -d '\" ' | tr ',' '\n' | sed 's/^/- /')\ninfrastructure_host_subnet_ids:\n$(echo \"",
+                    {
+                      "Fn::Join": [
+                        ",",
+                        {
+                          "Ref": "InfrastructureHostSubnets"
+                        }
+                      ]
+                    },
+                    "\" | tr -d '\" ' | tr ',' '\n' | sed 's/^/- /')\ndcv_session_private_subnet_ids:\n$(echo \"",
+                    {
+                      "Fn::Join": [
+                        ",",
+                        {
+                          "Ref": "VdiSubnets"
+                        }
+                      ]
+                    },
+                    "\" | tr -d '\" ' | tr ',' '\n' | sed 's/^/- /')\nenabled_modules:\n- virtual-desktop-controller\n$(echo ",
+                    {
+                      "Ref": "IsLoadBalancerInternetFacing"
+                    },
+                    "- bastion-host | grep true | sed 's:true::')\nmetrics_provider: cloudwatch\nbase_os: amazonlinux2\ninstance_type: m5.large\nvolume_size: '200'\nEOF\nres-admin config generate --values-file values.yml --force --existing-resources --regenerate\nres-admin config update --overwrite --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\n if [ $(echo \"  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  \"|wc -w) -eq 5 ] ; then  res-admin config set Key=vdc.dcv_broker.autoscaling.instance_ami,Type=str,Value=",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    " --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "; fi\n if [ $(echo \"  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  \"|wc -w) -eq 5 ] ; then  res-admin config set Key=vdc.dcv_connection_gateway.autoscaling.instance_ami,Type=str,Value=",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    " --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "; fi\n if [ $(echo \"  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  \"|wc -w) -eq 5 ] ; then  res-admin config set Key=bastion-host.instance_ami,Type=str,Value=",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    " --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "; fi\n if [ $(echo \"  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  \"|wc -w) -eq 5 ] ; then  res-admin config set Key=vdc.controller.autoscaling.instance_ami,Type=str,Value=",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    " --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "; fi\n if [ $(echo \"  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    "  \"|wc -w) -eq 5 ] ; then  res-admin config set Key=cluster-manager.ec2.autoscaling.instance_ami,Type=str,Value=",
+                    {
+                      "Ref": "InfrastructureHostAMI"
+                    },
+                    " --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "; fi\nres-admin config set Key=directoryservice.name,Type=str,Value='",
+                    {
+                      "Ref": "ActiveDirectoryName"
+                    },
+                    "' --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin config set Key=directoryservice.ldap_base,Type=str,Value='",
+                    {
+                      "Ref": "LDAPBase"
+                    },
+                    "' --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin config set Key=directoryservice.root_username_secret_arn,Type=str,Value='",
+                    {
+                      "Ref": "DirectoryServiceSecretServiceAccountUsername1BF50E25"
+                    },
+                    "' --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin config set Key=directoryservice.root_password_secret_arn,Type=str,Value='",
+                    {
+                      "Ref": "ServiceAccountPasswordSecretArn"
+                    },
+                    "' --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin config set Key=directoryservice.ad_short_name,Type=str,Value='",
+                    {
+                      "Ref": "ADShortName"
+                    },
+                    "' --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin config set Key=directoryservice.ldap_connection_uri,Type=str,Value='",
+                    {
+                      "Ref": "LDAPConnectionURI"
+                    },
+                    "' --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin config set Key=directoryservice.users.ou,Type=str,Value='",
+                    {
+                      "Ref": "UsersOU"
+                    },
+                    "' --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin config set Key=directoryservice.groups.ou,Type=str,Value='",
+                    {
+                      "Ref": "GroupsOU"
+                    },
+                    "' --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin config set Key=directoryservice.computers.ou,Type=str,Value='",
+                    {
+                      "Ref": "ComputersOU"
+                    },
+                    "' --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin config set Key=directoryservice.sudoers.ou,Type=str,Value='",
+                    {
+                      "Ref": "SudoersOU"
+                    },
+                    "' --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin config set Key=directoryservice.sudoers.group_name,Type=str,Value='",
+                    {
+                      "Ref": "SudoersGroupName"
+                    },
+                    "' --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nif [ -n \"",
+                    {
+                      "Ref": "DomainTLSCertificateSecretArn"
+                    },
+                    "\" ]; then res-admin config set Key=directoryservice.tls_certificate_secret_arn,Type=str,Value=",
+                    {
+                      "Ref": "DomainTLSCertificateSecretArn"
+                    },
+                    " --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ";fi \nres-admin config set Key=directoryservice.sssd.ldap_id_mapping,Type=str,Value='",
+                    {
+                      "Ref": "EnableLdapIDMapping"
+                    },
+                    "' --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin config set Key=directoryservice.disable_ad_join,Type=str,Value='",
+                    {
+                      "Ref": "DisableADJoin"
+                    },
+                    "' --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin config set Key=directoryservice.root_user_dn_secret_arn,Type=str,Value='",
+                    {
+                      "Ref": "DirectoryServiceSecretServiceAccountUserDNF2D1CA4E"
+                    },
+                    "' --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin config set Key=directoryservice.root_credentials_provided,Type=bool,Value=True --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\n if [ $(echo \"  ",
+                    {
+                      "Ref": "CustomDomainNameforWebApp"
+                    },
+                    "  ",
+                    {
+                      "Ref": "ACMCertificateARNforWebApp"
+                    },
+                    "  ",
+                    {
+                      "Ref": "CustomDomainNameforVDI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "CertificateSecretARNforVDI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "PrivateKeySecretARNforVDI"
+                    },
+                    "  \"|wc -w) -eq 5 ] ; then  res-admin config set Key=cluster.load_balancers.external_alb.certificates.custom_dns_name,Type=str,Value=",
+                    {
+                      "Ref": "CustomDomainNameforWebApp"
+                    },
+                    " --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "; fi\n if [ $(echo \"  ",
+                    {
+                      "Ref": "CustomDomainNameforWebApp"
+                    },
+                    "  ",
+                    {
+                      "Ref": "ACMCertificateARNforWebApp"
+                    },
+                    "  ",
+                    {
+                      "Ref": "CustomDomainNameforVDI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "CertificateSecretARNforVDI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "PrivateKeySecretARNforVDI"
+                    },
+                    "  \"|wc -w) -eq 5 ] ; then  res-admin config set Key=cluster.load_balancers.external_alb.certificates.acm_certificate_arn,Type=str,Value=",
+                    {
+                      "Ref": "ACMCertificateARNforWebApp"
+                    },
+                    " --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "; fi\n if [ $(echo \"  ",
+                    {
+                      "Ref": "CustomDomainNameforWebApp"
+                    },
+                    "  ",
+                    {
+                      "Ref": "ACMCertificateARNforWebApp"
+                    },
+                    "  ",
+                    {
+                      "Ref": "CustomDomainNameforVDI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "CertificateSecretARNforVDI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "PrivateKeySecretARNforVDI"
+                    },
+                    "  \"|wc -w) -eq 5 ] ; then  res-admin config set Key=vdc.dcv_connection_gateway.certificate.custom_dns_name,Type=str,Value=",
+                    {
+                      "Ref": "CustomDomainNameforVDI"
+                    },
+                    " --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "; fi\n if [ $(echo \"  ",
+                    {
+                      "Ref": "CustomDomainNameforWebApp"
+                    },
+                    "  ",
+                    {
+                      "Ref": "ACMCertificateARNforWebApp"
+                    },
+                    "  ",
+                    {
+                      "Ref": "CustomDomainNameforVDI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "CertificateSecretARNforVDI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "PrivateKeySecretARNforVDI"
+                    },
+                    "  \"|wc -w) -eq 5 ] ; then  res-admin config set Key=vdc.dcv_connection_gateway.certificate.certificate_secret_arn,Type=str,Value=",
+                    {
+                      "Ref": "CertificateSecretARNforVDI"
+                    },
+                    " --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "; fi\n if [ $(echo \"  ",
+                    {
+                      "Ref": "CustomDomainNameforWebApp"
+                    },
+                    "  ",
+                    {
+                      "Ref": "ACMCertificateARNforWebApp"
+                    },
+                    "  ",
+                    {
+                      "Ref": "CustomDomainNameforVDI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "CertificateSecretARNforVDI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "PrivateKeySecretARNforVDI"
+                    },
+                    "  \"|wc -w) -eq 5 ] ; then  res-admin config set Key=vdc.dcv_connection_gateway.certificate.private_key_secret_arn,Type=str,Value=",
+                    {
+                      "Ref": "PrivateKeySecretARNforVDI"
+                    },
+                    " --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "; fi\n if [ $(echo \"  ",
+                    {
+                      "Ref": "CustomDomainNameforWebApp"
+                    },
+                    "  ",
+                    {
+                      "Ref": "ACMCertificateARNforWebApp"
+                    },
+                    "  ",
+                    {
+                      "Ref": "CustomDomainNameforVDI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "CertificateSecretARNforVDI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "PrivateKeySecretARNforVDI"
+                    },
+                    "  \"|wc -w) -eq 5 ] ; then  res-admin config set Key=cluster.load_balancers.external_alb.certificates.provided,Type=str,Value=true --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "; else  res-admin config set Key=cluster.load_balancers.external_alb.certificates.provided,Type=str,Value=false --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ";fi \n if [ $(echo \"  ",
+                    {
+                      "Ref": "CustomDomainNameforWebApp"
+                    },
+                    "  ",
+                    {
+                      "Ref": "ACMCertificateARNforWebApp"
+                    },
+                    "  ",
+                    {
+                      "Ref": "CustomDomainNameforVDI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "CertificateSecretARNforVDI"
+                    },
+                    "  ",
+                    {
+                      "Ref": "PrivateKeySecretARNforVDI"
+                    },
+                    "  \"|wc -w) -eq 5 ] ; then  res-admin config set Key=vdc.dcv_connection_gateway.certificate.provided,Type=str,Value=true --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "; else  res-admin config set Key=vdc.dcv_connection_gateway.certificate.provided,Type=str,Value=false --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ";fi \nrm -rf /root/.idea/clusters/",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    "/",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "/config\nres-admin config export --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin bootstrap --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nres-admin deploy all --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nEOC\n"
+                  ]
+                ]
+              }
+            ],
+            "Environment": [
+              {
+                "Name": "AWS_REGION",
+                "Value": {
+                  "Ref": "AWS::Region"
+                }
+              },
+              {
+                "Name": "AWS_DEFAULT_REGION",
+                "Value": {
+                  "Ref": "AWS::Region"
+                }
+              },
+              {
+                "Name": "IDEA_ADMIN_AWS_CREDENTIAL_PROVIDER",
+                "Value": "Ec2InstanceMetadata"
+              }
+            ],
+            "Essential": true,
+            "Image": {
+              "Fn::Join": [
+                ":",
+                [
+                  {
+                    "Fn::Join": [
+                      "",
+                      [
+                        {
+                          "Fn::Select": [
+                            4,
+                            {
+                              "Fn::Split": [
+                                ":",
+                                {
+                                  "Fn::GetAtt": [
+                                    "InstallerInstallerEcrRepo8D809CEA",
+                                    "Arn"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        ".dkr.ecr.",
+                        {
+                          "Fn::Select": [
+                            3,
+                            {
+                              "Fn::Split": [
+                                ":",
+                                {
+                                  "Fn::GetAtt": [
+                                    "InstallerInstallerEcrRepo8D809CEA",
+                                    "Arn"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        ".",
+                        {
+                          "Ref": "AWS::URLSuffix"
+                        },
+                        "/",
+                        {
+                          "Ref": "InstallerInstallerEcrRepo8D809CEA"
+                        }
+                      ]
+                    ]
+                  },
+                  "2024.08-d09c2666"
+                ]
+              ]
+            },
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "InstallerTasksCreateTaskDefCreateContainerLogGroupB0BB7610"
+                },
+                "awslogs-stream-prefix": "CreateLogStream",
+                "awslogs-region": {
+                  "Ref": "AWS::Region"
+                }
+              }
+            },
+            "Name": "CreateContainer"
+          }
+        ],
+        "Cpu": "2048",
+        "ExecutionRoleArn": {
+          "Fn::GetAtt": [
+            "InstallerTasksPermissionsPipelineRoleD0D276F9",
+            "Arn"
+          ]
+        },
+        "Family": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "EnvironmentName"
+              },
+              "CreateTaskDef"
+            ]
+          ]
+        },
+        "Memory": "4096",
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": [
+          "FARGATE"
+        ],
+        "TaskRoleArn": {
+          "Fn::GetAtt": [
+            "InstallerTasksPermissionsPipelineRoleD0D276F9",
+            "Arn"
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/CreateTaskDef/Resource"
+      }
+    },
+    "InstallerTasksCreateTaskDefCreateContainerLogGroupB0BB7610": {
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain",
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/CreateTaskDef/CreateContainer/LogGroup/Resource"
+      }
+    },
+    "InstallerTasksCreateSecurityGroup514FFF0D": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "ResearchAndEngineeringStudio/Installer/Tasks/Create/SecurityGroup",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "VpcId"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/Create/SecurityGroup/Resource"
+      }
+    },
+    "InstallerTasksUpdateTaskDef1EDBDB9C": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ContainerDefinitions": [
+          {
+            "Command": [
+              "/bin/sh",
+              "-c",
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    "/bin/sh -ex <<'EOC'\nres-admin --version\nres-admin deploy all --upgrade --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nEOC\n"
+                  ]
+                ]
+              }
+            ],
+            "Environment": [
+              {
+                "Name": "AWS_REGION",
+                "Value": {
+                  "Ref": "AWS::Region"
+                }
+              },
+              {
+                "Name": "AWS_DEFAULT_REGION",
+                "Value": {
+                  "Ref": "AWS::Region"
+                }
+              },
+              {
+                "Name": "IDEA_ADMIN_AWS_CREDENTIAL_PROVIDER",
+                "Value": "Ec2InstanceMetadata"
+              }
+            ],
+            "Essential": true,
+            "Image": {
+              "Fn::Join": [
+                ":",
+                [
+                  {
+                    "Fn::Join": [
+                      "",
+                      [
+                        {
+                          "Fn::Select": [
+                            4,
+                            {
+                              "Fn::Split": [
+                                ":",
+                                {
+                                  "Fn::GetAtt": [
+                                    "InstallerInstallerEcrRepo8D809CEA",
+                                    "Arn"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        ".dkr.ecr.",
+                        {
+                          "Fn::Select": [
+                            3,
+                            {
+                              "Fn::Split": [
+                                ":",
+                                {
+                                  "Fn::GetAtt": [
+                                    "InstallerInstallerEcrRepo8D809CEA",
+                                    "Arn"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        ".",
+                        {
+                          "Ref": "AWS::URLSuffix"
+                        },
+                        "/",
+                        {
+                          "Ref": "InstallerInstallerEcrRepo8D809CEA"
+                        }
+                      ]
+                    ]
+                  },
+                  "2024.08-d09c2666"
+                ]
+              ]
+            },
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "InstallerTasksUpdateTaskDefUpdateContainerLogGroupF3D746B9"
+                },
+                "awslogs-stream-prefix": "UpdateLogStream",
+                "awslogs-region": {
+                  "Ref": "AWS::Region"
+                }
+              }
+            },
+            "Name": "UpdateContainer"
+          }
+        ],
+        "Cpu": "2048",
+        "ExecutionRoleArn": {
+          "Fn::GetAtt": [
+            "InstallerTasksPermissionsPipelineRoleD0D276F9",
+            "Arn"
+          ]
+        },
+        "Family": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "EnvironmentName"
+              },
+              "UpdateTaskDef"
+            ]
+          ]
+        },
+        "Memory": "4096",
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": [
+          "FARGATE"
+        ],
+        "TaskRoleArn": {
+          "Fn::GetAtt": [
+            "InstallerTasksPermissionsPipelineRoleD0D276F9",
+            "Arn"
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/UpdateTaskDef/Resource"
+      }
+    },
+    "InstallerTasksUpdateTaskDefUpdateContainerLogGroupF3D746B9": {
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain",
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/UpdateTaskDef/UpdateContainer/LogGroup/Resource"
+      }
+    },
+    "InstallerTasksUpdateSecurityGroup3269C5D9": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "ResearchAndEngineeringStudio/Installer/Tasks/Update/SecurityGroup",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "VpcId"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/Update/SecurityGroup/Resource"
+      }
+    },
+    "InstallerTasksDeleteTaskDefDDA0ECF3": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ContainerDefinitions": [
+          {
+            "Command": [
+              "/bin/sh",
+              "-c",
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    "/bin/sh -ex <<'EOC'\nres-admin --version\nres-admin delete-cluster --delete-databases --delete-bootstrap --force --cluster-name ",
+                    {
+                      "Ref": "EnvironmentName"
+                    },
+                    " --aws-region ",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "\nEOC\n"
+                  ]
+                ]
+              }
+            ],
+            "Environment": [
+              {
+                "Name": "AWS_REGION",
+                "Value": {
+                  "Ref": "AWS::Region"
+                }
+              },
+              {
+                "Name": "AWS_DEFAULT_REGION",
+                "Value": {
+                  "Ref": "AWS::Region"
+                }
+              },
+              {
+                "Name": "IDEA_ADMIN_AWS_CREDENTIAL_PROVIDER",
+                "Value": "Ec2InstanceMetadata"
+              }
+            ],
+            "Essential": true,
+            "Image": {
+              "Fn::Join": [
+                ":",
+                [
+                  {
+                    "Fn::Join": [
+                      "",
+                      [
+                        {
+                          "Fn::Select": [
+                            4,
+                            {
+                              "Fn::Split": [
+                                ":",
+                                {
+                                  "Fn::GetAtt": [
+                                    "InstallerInstallerEcrRepo8D809CEA",
+                                    "Arn"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        ".dkr.ecr.",
+                        {
+                          "Fn::Select": [
+                            3,
+                            {
+                              "Fn::Split": [
+                                ":",
+                                {
+                                  "Fn::GetAtt": [
+                                    "InstallerInstallerEcrRepo8D809CEA",
+                                    "Arn"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        ".",
+                        {
+                          "Ref": "AWS::URLSuffix"
+                        },
+                        "/",
+                        {
+                          "Ref": "InstallerInstallerEcrRepo8D809CEA"
+                        }
+                      ]
+                    ]
+                  },
+                  "2024.08-d09c2666"
+                ]
+              ]
+            },
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "InstallerTasksDeleteTaskDefDeleteContainerLogGroup20006B67"
+                },
+                "awslogs-stream-prefix": "DeleteLogStream",
+                "awslogs-region": {
+                  "Ref": "AWS::Region"
+                }
+              }
+            },
+            "Name": "DeleteContainer"
+          }
+        ],
+        "Cpu": "2048",
+        "ExecutionRoleArn": {
+          "Fn::GetAtt": [
+            "InstallerTasksPermissionsPipelineRoleD0D276F9",
+            "Arn"
+          ]
+        },
+        "Family": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "EnvironmentName"
+              },
+              "DeleteTaskDef"
+            ]
+          ]
+        },
+        "Memory": "4096",
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": [
+          "FARGATE"
+        ],
+        "TaskRoleArn": {
+          "Fn::GetAtt": [
+            "InstallerTasksPermissionsPipelineRoleD0D276F9",
+            "Arn"
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/DeleteTaskDef/Resource"
+      }
+    },
+    "InstallerTasksDeleteTaskDefDeleteContainerLogGroup20006B67": {
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain",
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/DeleteTaskDef/DeleteContainer/LogGroup/Resource"
+      }
+    },
+    "InstallerTasksDeleteSecurityGroupD7708443": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "ResearchAndEngineeringStudio/Installer/Tasks/Delete/SecurityGroup",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "VpcId"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/Delete/SecurityGroup/Resource"
+      }
+    },
+    "InstallerTasksUnprotectCognitoUserPoolLambdaServiceRole41ADA9B7": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "PermissionsBoundary": {
+          "Fn::If": [
+            "PermissionBoundaryProvided",
+            {
+              "Ref": "IAMPermissionBoundary"
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/UnprotectCognitoUserPoolLambda/ServiceRole/Resource"
+      }
+    },
+    "InstallerTasksUnprotectCognitoUserPoolLambdaServiceRoleDefaultPolicy171E54D4": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "cognito-idp:ListUserPools",
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "cognito-idp:DescribeUserPool",
+                "cognito-idp:UpdateUserPool"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":cognito-idp:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":userpool/*"
+                  ]
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "InstallerTasksUnprotectCognitoUserPoolLambdaServiceRoleDefaultPolicy171E54D4",
+        "Roles": [
+          {
+            "Ref": "InstallerTasksUnprotectCognitoUserPoolLambdaServiceRole41ADA9B7"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/UnprotectCognitoUserPoolLambda/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "InstallerTasksUnprotectCognitoUserPoolLambda9823850B": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Fn::Sub": "research-engineering-studio-${AWS::Region}"
+          },
+          "S3Key": "releases/2024.08/e3b3e44615457c7daae93d212682970148907fe598b9dae9282ebc80f1e0d679.zip"
+        },
+        "Description": "Lambda to unprotect Cognito user pool",
+        "Handler": "handlers.unprotect_cognito_user_pool",
+        "Role": {
+          "Fn::GetAtt": [
+            "InstallerTasksUnprotectCognitoUserPoolLambdaServiceRole41ADA9B7",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 120
+      },
+      "DependsOn": [
+        "InstallerTasksUnprotectCognitoUserPoolLambdaServiceRoleDefaultPolicy171E54D4",
+        "InstallerTasksUnprotectCognitoUserPoolLambdaServiceRole41ADA9B7"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/UnprotectCognitoUserPoolLambda/Resource",
+        "aws:asset:path": "asset.e3b3e44615457c7daae93d212682970148907fe598b9dae9282ebc80f1e0d679",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "InstallerTasksInstallerDeleteEcrImagesLambdaServiceRole0B62E492": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "PermissionsBoundary": {
+          "Fn::If": [
+            "PermissionBoundaryProvided",
+            {
+              "Ref": "IAMPermissionBoundary"
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/InstallerDeleteEcrImagesLambda/ServiceRole/Resource"
+      }
+    },
+    "InstallerTasksInstallerDeleteEcrImagesLambdaServiceRoleDefaultPolicy63E26A27": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ecr:BatchDeleteImage",
+                "ecr:ListImages"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":ecr:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":repository/",
+                    {
+                      "Fn::Select": [
+                        0,
+                        {
+                          "Fn::Split": [
+                            ":",
+                            {
+                              "Fn::Select": [
+                                1,
+                                {
+                                  "Fn::Split": [
+                                    "/",
+                                    {
+                                      "Fn::Join": [
+                                        ":",
+                                        [
+                                          {
+                                            "Fn::Join": [
+                                              "",
+                                              [
+                                                {
+                                                  "Fn::Select": [
+                                                    4,
+                                                    {
+                                                      "Fn::Split": [
+                                                        ":",
+                                                        {
+                                                          "Fn::GetAtt": [
+                                                            "InstallerInstallerEcrRepo8D809CEA",
+                                                            "Arn"
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                },
+                                                ".dkr.ecr.",
+                                                {
+                                                  "Fn::Select": [
+                                                    3,
+                                                    {
+                                                      "Fn::Split": [
+                                                        ":",
+                                                        {
+                                                          "Fn::GetAtt": [
+                                                            "InstallerInstallerEcrRepo8D809CEA",
+                                                            "Arn"
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                },
+                                                ".",
+                                                {
+                                                  "Ref": "AWS::URLSuffix"
+                                                },
+                                                "/",
+                                                {
+                                                  "Ref": "InstallerInstallerEcrRepo8D809CEA"
+                                                }
+                                              ]
+                                            ]
+                                          },
+                                          "2024.08-d09c2666"
+                                        ]
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "InstallerTasksInstallerDeleteEcrImagesLambdaServiceRoleDefaultPolicy63E26A27",
+        "Roles": [
+          {
+            "Ref": "InstallerTasksInstallerDeleteEcrImagesLambdaServiceRole0B62E492"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/InstallerDeleteEcrImagesLambda/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "InstallerTasksInstallerDeleteEcrImagesLambda33502D26": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Fn::Sub": "research-engineering-studio-${AWS::Region}"
+          },
+          "S3Key": "releases/2024.08/e3b3e44615457c7daae93d212682970148907fe598b9dae9282ebc80f1e0d679.zip"
+        },
+        "Description": "Lambda to delete installer ecr repository images",
+        "Handler": "handlers.delete_installer_ecr_images",
+        "Role": {
+          "Fn::GetAtt": [
+            "InstallerTasksInstallerDeleteEcrImagesLambdaServiceRole0B62E492",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 120
+      },
+      "DependsOn": [
+        "InstallerTasksInstallerDeleteEcrImagesLambdaServiceRoleDefaultPolicy63E26A27",
+        "InstallerTasksInstallerDeleteEcrImagesLambdaServiceRole0B62E492"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/Tasks/InstallerDeleteEcrImagesLambda/Resource",
+        "aws:asset:path": "asset.e3b3e44615457c7daae93d212682970148907fe598b9dae9282ebc80f1e0d679",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "InstallerWaitConditionResponseSenderServiceRoleD3B7C9E9": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "PermissionsBoundary": {
+          "Fn::If": [
+            "PermissionBoundaryProvided",
+            {
+              "Ref": "IAMPermissionBoundary"
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/WaitConditionResponseSender/ServiceRole/Resource"
+      }
+    },
+    "InstallerWaitConditionResponseSender7A7BC874": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Fn::Sub": "research-engineering-studio-${AWS::Region}"
+          },
+          "S3Key": "releases/2024.08/e3b3e44615457c7daae93d212682970148907fe598b9dae9282ebc80f1e0d679.zip"
+        },
+        "Description": "Lambda to send response using the wait condition callback",
+        "Handler": "handlers.send_wait_condition_response",
+        "Role": {
+          "Fn::GetAtt": [
+            "InstallerWaitConditionResponseSenderServiceRoleD3B7C9E9",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 10
+      },
+      "DependsOn": [
+        "InstallerWaitConditionResponseSenderServiceRoleD3B7C9E9"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/WaitConditionResponseSender/Resource",
+        "aws:asset:path": "asset.e3b3e44615457c7daae93d212682970148907fe598b9dae9282ebc80f1e0d679",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "InstallerInstallerStateMachineRole6DA34EFE": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "states.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PermissionsBoundary": {
+          "Fn::If": [
+            "PermissionBoundaryProvided",
+            {
+              "Ref": "IAMPermissionBoundary"
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "InstallerInstallerEcrRepo8D809CEA"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/InstallerStateMachine/Role/Resource"
+      }
+    },
+    "InstallerInstallerStateMachineRoleDefaultPolicyC7A52C7D": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "codebuild:BatchGetBuilds",
+                "codebuild:BatchGetReports",
+                "codebuild:StartBuild",
+                "codebuild:StopBuild"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "InstallerTasksCopyImageToInstallerEcrFC02DD2F",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "events:DescribeRule",
+                "events:PutRule",
+                "events:PutTargets"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":events:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":rule/StepFunctionsGetEventForCodeBuildStartBuildRule"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":events:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":rule/StepFunctionsGetEventsForECSTaskRule"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "ecs:RunTask",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Fn::Select": [
+                          1,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksCreateTaskDef12809FCD"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          2,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksCreateTaskDef12809FCD"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          3,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksCreateTaskDef12809FCD"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          4,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksCreateTaskDef12809FCD"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          0,
+                          {
+                            "Fn::Split": [
+                              "/",
+                              {
+                                "Fn::Select": [
+                                  5,
+                                  {
+                                    "Fn::Split": [
+                                      ":",
+                                      {
+                                        "Ref": "InstallerTasksCreateTaskDef12809FCD"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "/",
+                      {
+                        "Fn::Select": [
+                          1,
+                          {
+                            "Fn::Split": [
+                              "/",
+                              {
+                                "Fn::Select": [
+                                  5,
+                                  {
+                                    "Fn::Split": [
+                                      ":",
+                                      {
+                                        "Ref": "InstallerTasksCreateTaskDef12809FCD"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Fn::Select": [
+                          1,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksCreateTaskDef12809FCD"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          2,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksCreateTaskDef12809FCD"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          3,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksCreateTaskDef12809FCD"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          4,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksCreateTaskDef12809FCD"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          0,
+                          {
+                            "Fn::Split": [
+                              "/",
+                              {
+                                "Fn::Select": [
+                                  5,
+                                  {
+                                    "Fn::Split": [
+                                      ":",
+                                      {
+                                        "Ref": "InstallerTasksCreateTaskDef12809FCD"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "/",
+                      {
+                        "Fn::Select": [
+                          1,
+                          {
+                            "Fn::Split": [
+                              "/",
+                              {
+                                "Fn::Select": [
+                                  5,
+                                  {
+                                    "Fn::Split": [
+                                      ":",
+                                      {
+                                        "Ref": "InstallerTasksCreateTaskDef12809FCD"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Fn::Select": [
+                          1,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksDeleteTaskDefDDA0ECF3"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          2,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksDeleteTaskDefDDA0ECF3"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          3,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksDeleteTaskDefDDA0ECF3"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          4,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksDeleteTaskDefDDA0ECF3"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          0,
+                          {
+                            "Fn::Split": [
+                              "/",
+                              {
+                                "Fn::Select": [
+                                  5,
+                                  {
+                                    "Fn::Split": [
+                                      ":",
+                                      {
+                                        "Ref": "InstallerTasksDeleteTaskDefDDA0ECF3"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "/",
+                      {
+                        "Fn::Select": [
+                          1,
+                          {
+                            "Fn::Split": [
+                              "/",
+                              {
+                                "Fn::Select": [
+                                  5,
+                                  {
+                                    "Fn::Split": [
+                                      ":",
+                                      {
+                                        "Ref": "InstallerTasksDeleteTaskDefDDA0ECF3"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Fn::Select": [
+                          1,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksDeleteTaskDefDDA0ECF3"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          2,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksDeleteTaskDefDDA0ECF3"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          3,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksDeleteTaskDefDDA0ECF3"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          4,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksDeleteTaskDefDDA0ECF3"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          0,
+                          {
+                            "Fn::Split": [
+                              "/",
+                              {
+                                "Fn::Select": [
+                                  5,
+                                  {
+                                    "Fn::Split": [
+                                      ":",
+                                      {
+                                        "Ref": "InstallerTasksDeleteTaskDefDDA0ECF3"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "/",
+                      {
+                        "Fn::Select": [
+                          1,
+                          {
+                            "Fn::Split": [
+                              "/",
+                              {
+                                "Fn::Select": [
+                                  5,
+                                  {
+                                    "Fn::Split": [
+                                      ":",
+                                      {
+                                        "Ref": "InstallerTasksDeleteTaskDefDDA0ECF3"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Fn::Select": [
+                          1,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksUpdateTaskDef1EDBDB9C"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          2,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksUpdateTaskDef1EDBDB9C"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          3,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksUpdateTaskDef1EDBDB9C"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          4,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksUpdateTaskDef1EDBDB9C"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          0,
+                          {
+                            "Fn::Split": [
+                              "/",
+                              {
+                                "Fn::Select": [
+                                  5,
+                                  {
+                                    "Fn::Split": [
+                                      ":",
+                                      {
+                                        "Ref": "InstallerTasksUpdateTaskDef1EDBDB9C"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "/",
+                      {
+                        "Fn::Select": [
+                          1,
+                          {
+                            "Fn::Split": [
+                              "/",
+                              {
+                                "Fn::Select": [
+                                  5,
+                                  {
+                                    "Fn::Split": [
+                                      ":",
+                                      {
+                                        "Ref": "InstallerTasksUpdateTaskDef1EDBDB9C"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Fn::Select": [
+                          1,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksUpdateTaskDef1EDBDB9C"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          2,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksUpdateTaskDef1EDBDB9C"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          3,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksUpdateTaskDef1EDBDB9C"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          4,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "InstallerTasksUpdateTaskDef1EDBDB9C"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      ":",
+                      {
+                        "Fn::Select": [
+                          0,
+                          {
+                            "Fn::Split": [
+                              "/",
+                              {
+                                "Fn::Select": [
+                                  5,
+                                  {
+                                    "Fn::Split": [
+                                      ":",
+                                      {
+                                        "Ref": "InstallerTasksUpdateTaskDef1EDBDB9C"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "/",
+                      {
+                        "Fn::Select": [
+                          1,
+                          {
+                            "Fn::Split": [
+                              "/",
+                              {
+                                "Fn::Select": [
+                                  5,
+                                  {
+                                    "Fn::Split": [
+                                      ":",
+                                      {
+                                        "Ref": "InstallerTasksUpdateTaskDef1EDBDB9C"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "ecs:DescribeTasks",
+                "ecs:StopTask"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": "iam:PassRole",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "InstallerTasksPermissionsPipelineRoleD0D276F9",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "InstallerTasksInstallerDeleteEcrImagesLambda33502D26",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "InstallerTasksUnprotectCognitoUserPoolLambda9823850B",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "InstallerWaitConditionResponseSender7A7BC874",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "InstallerTasksInstallerDeleteEcrImagesLambda33502D26",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "InstallerTasksUnprotectCognitoUserPoolLambda9823850B",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "InstallerWaitConditionResponseSender7A7BC874",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "InstallerInstallerStateMachineRoleDefaultPolicyC7A52C7D",
+        "Roles": [
+          {
+            "Ref": "InstallerInstallerStateMachineRole6DA34EFE"
+          }
+        ]
+      },
+      "DependsOn": [
+        "InstallerInstallerEcrRepo8D809CEA"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/InstallerStateMachine/Role/DefaultPolicy/Resource"
+      }
+    },
+    "InstallerInstallerStateMachineEAA7045D": {
+      "Type": "AWS::StepFunctions::StateMachine",
+      "Properties": {
+        "DefinitionString": {
+          "Fn::Join": [
+            "",
+            [
+              "{\"StartAt\":\"SwitchByEventType\",\"States\":{\"SwitchByEventType\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.RequestType\",\"StringEquals\":\"Create\",\"Next\":\"InstallerCodeBuildStart\"},{\"Variable\":\"$.RequestType\",\"StringEquals\":\"Update\",\"Next\":\"InstallerCodeBuildStart\"},{\"Variable\":\"$.RequestType\",\"StringEquals\":\"Delete\",\"Next\":\"UnprotectCognitoUserPool\"}],\"Default\":\"UnknownRequestType\"},\"UnknownRequestType\":{\"Type\":\"Fail\"},\"InstallerCodeBuildStart\":{\"Next\":\"SwitchByEventTypePostCodeBuild\",\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.ERROR\",\"Next\":\"SendCfnResponse\"}],\"Type\":\"Task\",\"ResultPath\":\"$.RESULT\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::codebuild:startBuild.sync\",\"Parameters\":{\"ProjectName\":\"",
+              {
+                "Ref": "InstallerTasksCopyImageToInstallerEcrFC02DD2F"
+              },
+              "\"}},\"SwitchByEventTypePostCodeBuild\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.RequestType\",\"StringEquals\":\"Create\",\"Next\":\"Create\"},{\"Variable\":\"$.RequestType\",\"StringEquals\":\"Update\",\"Next\":\"Update\"}],\"Default\":\"UnknownRequestTypePostCodebuild\"},\"UnknownRequestTypePostCodebuild\":{\"Type\":\"Fail\"},\"Create\":{\"Next\":\"SendCfnResponse\",\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.ERROR\",\"Next\":\"SendCfnResponse\"}],\"Type\":\"Task\",\"ResultPath\":\"$.RESULT\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::ecs:runTask.sync\",\"Parameters\":{\"Cluster\":\"",
+              {
+                "Fn::GetAtt": [
+                  "InstallerTasksClusterA78B7F2B",
+                  "Arn"
+                ]
+              },
+              "\",\"TaskDefinition\":\"",
+              {
+                "Ref": "EnvironmentName"
+              },
+              "CreateTaskDef\",\"NetworkConfiguration\":{\"AwsvpcConfiguration\":{\"Subnets\":[\"",
+              {
+                "Fn::Select": [
+                  0,
+                  {
+                    "Ref": "InfrastructureHostSubnets"
+                  }
+                ]
+              },
+              "\",\"",
+              {
+                "Fn::Select": [
+                  1,
+                  {
+                    "Ref": "InfrastructureHostSubnets"
+                  }
+                ]
+              },
+              "\"],\"SecurityGroups\":[\"",
+              {
+                "Fn::GetAtt": [
+                  "InstallerTasksCreateSecurityGroup514FFF0D",
+                  "GroupId"
+                ]
+              },
+              "\"]}},\"LaunchType\":\"FARGATE\",\"PlatformVersion\":\"LATEST\"}},\"SendCfnResponse\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2},{\"ErrorEquals\":[\"States.ALL\"]}],\"Type\":\"Task\",\"Resource\":\"",
+              {
+                "Fn::GetAtt": [
+                  "InstallerWaitConditionResponseSender7A7BC874",
+                  "Arn"
+                ]
+              },
+              "\"},\"Update\":{\"Next\":\"SendCfnResponse\",\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.ERROR\",\"Next\":\"SendCfnResponse\"}],\"Type\":\"Task\",\"ResultPath\":\"$.RESULT\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::ecs:runTask.sync\",\"Parameters\":{\"Cluster\":\"",
+              {
+                "Fn::GetAtt": [
+                  "InstallerTasksClusterA78B7F2B",
+                  "Arn"
+                ]
+              },
+              "\",\"TaskDefinition\":\"",
+              {
+                "Ref": "EnvironmentName"
+              },
+              "UpdateTaskDef\",\"NetworkConfiguration\":{\"AwsvpcConfiguration\":{\"Subnets\":[\"",
+              {
+                "Fn::Select": [
+                  0,
+                  {
+                    "Ref": "InfrastructureHostSubnets"
+                  }
+                ]
+              },
+              "\",\"",
+              {
+                "Fn::Select": [
+                  1,
+                  {
+                    "Ref": "InfrastructureHostSubnets"
+                  }
+                ]
+              },
+              "\"],\"SecurityGroups\":[\"",
+              {
+                "Fn::GetAtt": [
+                  "InstallerTasksUpdateSecurityGroup3269C5D9",
+                  "GroupId"
+                ]
+              },
+              "\"]}},\"LaunchType\":\"FARGATE\",\"PlatformVersion\":\"LATEST\"}},\"Delete\":{\"Next\":\"InstallerDeleteEcrImages\",\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.ERROR\",\"Next\":\"SendCfnResponse\"}],\"Type\":\"Task\",\"ResultPath\":\"$.RESULT\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::ecs:runTask.sync\",\"Parameters\":{\"Cluster\":\"",
+              {
+                "Fn::GetAtt": [
+                  "InstallerTasksClusterA78B7F2B",
+                  "Arn"
+                ]
+              },
+              "\",\"TaskDefinition\":\"",
+              {
+                "Ref": "EnvironmentName"
+              },
+              "DeleteTaskDef\",\"NetworkConfiguration\":{\"AwsvpcConfiguration\":{\"Subnets\":[\"",
+              {
+                "Fn::Select": [
+                  0,
+                  {
+                    "Ref": "InfrastructureHostSubnets"
+                  }
+                ]
+              },
+              "\",\"",
+              {
+                "Fn::Select": [
+                  1,
+                  {
+                    "Ref": "InfrastructureHostSubnets"
+                  }
+                ]
+              },
+              "\"],\"SecurityGroups\":[\"",
+              {
+                "Fn::GetAtt": [
+                  "InstallerTasksDeleteSecurityGroupD7708443",
+                  "GroupId"
+                ]
+              },
+              "\"]}},\"LaunchType\":\"FARGATE\",\"PlatformVersion\":\"LATEST\"}},\"UnprotectCognitoUserPool\":{\"Next\":\"Delete\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.ERROR\",\"Next\":\"SendCfnResponse\"}],\"Type\":\"Task\",\"ResultPath\":\"$.RESULT\",\"Resource\":\"",
+              {
+                "Fn::GetAtt": [
+                  "InstallerTasksUnprotectCognitoUserPoolLambda9823850B",
+                  "Arn"
+                ]
+              },
+              "\"},\"InstallerDeleteEcrImages\":{\"Next\":\"SendCfnResponse\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.ERROR\",\"Next\":\"SendCfnResponse\"}],\"Type\":\"Task\",\"ResultPath\":\"$.RESULT\",\"Resource\":\"",
+              {
+                "Fn::GetAtt": [
+                  "InstallerTasksInstallerDeleteEcrImagesLambda33502D26",
+                  "Arn"
+                ]
+              },
+              "\"}}}"
+            ]
+          ]
+        },
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "InstallerInstallerStateMachineRole6DA34EFE",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "InstallerInstallerEcrRepo8D809CEA",
+        "InstallerInstallerStateMachineRoleDefaultPolicyC7A52C7D",
+        "InstallerInstallerStateMachineRole6DA34EFE"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/Installer/InstallerStateMachine/Resource"
+      }
+    },
+    "CDKMetadata": {
+      "Type": "AWS::CDK::Metadata",
+      "Properties": {
+        "Analytics": "v2:deflate64:H4sIAAAAAAAA/11Ry04DMQz8Fu5poICEOFKggARSVZA4Vm7W3bq7G1d5gKpV/h0n26WCk8cZjx+TSz29vtUXZ/DtJ6ZqJi2tdf8ewDTqfmMX4KDDgE4Jv+obsujJ5wKH0OWKASVVHSx0XIn4A9YtZqqApDwah8F3YKFGJ9qSF21BSUnQ/RL37CmwO2TqlCVF0AnNQ9MSF9ySKXUDSqqFbl2B7ufRmkBsMzdiWeFqBd7LEvouB8n1LJoGwww8yni56L6NPt8puhHOwdUQ8AN884AbsjQ2/v/CNoA4405vSRmucB2prXS/cLxDUy4+Qtko4H5z3M+vgjTMO4hmljXivwsFqUfjl7FMVK/lxhf7xY3Y2nItkleunxzHfW4+4mzoZfE5OgqHX/7Pw78VZPiWyaAcTa2S+QHfwGzlquGTT3lKaomeo5Pi4qaQNdk6130CBXGjKh48g63yn4mZ3P1Kyt+e8B9FMX9Mklocwpbt+ZW+1dObs50nmrhoA3Wol0P8Aak4XEu9AgAA"
+      },
+      "Metadata": {
+        "aws:cdk:path": "ResearchAndEngineeringStudio/CDKMetadata/Default"
+      },
+      "Condition": "CDKMetadataAvailable"
+    }
+  },
+  "Conditions": {
+    "PermissionBoundaryProvided": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "IAMPermissionBoundary"
+            },
+            ""
+          ]
+        }
+      ]
+    },
+    "CDKMetadataAvailable": {
+      "Fn::Or": [
+        {
+          "Fn::Or": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "af-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-east-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-northeast-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-northeast-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-southeast-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-southeast-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ca-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "cn-north-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "cn-northwest-1"
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Or": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-north-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-west-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-west-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-west-3"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "il-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "me-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "me-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "sa-east-1"
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Or": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "us-east-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "us-east-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "us-west-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "us-west-2"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -13,7 +13,7 @@
     },       
     {
         "ParameterKey": "SudoersGroupName",
-        "ParameterValue": "ResSudouers"
+        "ParameterValue": "AR - AWS - RES - Sudouers"
     },
     {
         "ParameterKey": "IAMPermissionBoundary",
@@ -77,7 +77,7 @@
     },
     {
         "ParameterKey": "EnvironmentName",
-        "ParameterValue": "res-int2408"
+        "ParameterValue": "res-int"
     },
     {
         "ParameterKey": "ServiceAccountUsername",
@@ -97,7 +97,7 @@
     },
     {
         "ParameterKey": "LoadBalancerSubnets",
-        "ParameterValue": "subnet-01c0e033a4feb98b7,subnet-052d2f9fa64eabfef,subnet-0a54037c27d43f729"
+        "ParameterValue": "subnet-04090b46cf196b5b8,subnet-0fcde8c889d80feed,subnet-04bf07c85a38d9dd8"
     },
     {
         "ParameterKey": "VpcId",
@@ -125,10 +125,10 @@
     },
     {
         "ParameterKey": "IsLoadBalancerInternetFacing",
-        "ParameterValue": "true"
+        "ParameterValue": "false"
     },
     {
         "ParameterKey": "LDAPConnectionURI",
-        "ParameterValue": "ldaps://crwin.crnet.org"
+        "ParameterValue": "ldap://crwin.crnet.org"
     }
 ]

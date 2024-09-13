@@ -1,8 +1,0 @@
-# Begin: Disable ulimit
-{%- if context.base_os in ('amazonlinux2', 'rhel8', 'rhel9') %}
-echo -e "
-* hard memlock unlimited
-* soft memlock unlimited
-" >> /etc/security/limits.conf
-{%- endif %}
-# End: Disable ulimit

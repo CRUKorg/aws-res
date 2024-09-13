@@ -1,3 +1,0 @@
-## Virtual Desktop Session
-
-Context help coming soon ...
