@@ -12,7 +12,7 @@ interface ResProps extends cdk.StackProps {
     envName: string;
 }
 export class ResBaseStack extends cdk.Stack {
-    public parameterExports: { [parameterName: string]: any } = {}; 
+    public parameterExports: { [parameterName: string]: any } = {};
     constructor(scope: Construct, id: string, props: ResProps) {
         super(scope, id, props);
 
@@ -65,44 +65,45 @@ export class ResBaseStack extends cdk.Stack {
         //build parameter exports
 
         // RES Instance configuration
-        
-        this.parameterExports["EnvironmentName"] = `res-${props.envName}`;
-        this.parameterExports["AdministratorEmail"] = adminEmail;
-        this.parameterExports["CustomDomainNameforWebApp"] = props.baseDomain;
-        this.parameterExports["ACMCertificateARNforWebApp"] = webAppAcmCert.certificateArn;
-        this.parameterExports["SharedHomeFileSystemId"] = SharedHomeFileSystem.fileSystemId;
-        this.parameterExports["InfrastructureHostAMI"] = "";
-        this.parameterExports["IAMPermissionBoundary"] = "";
-        this.parameterExports["CertificateSecretARNforVDI"] = cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "CertificateSecretforVDI", `${letsencryptSecretPath}/certcert.pem`).secretArn;
-        this.parameterExports["PrivateKeySecretARNforVDI"] = cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "PrivateKeySecretforVDI", `${letsencryptSecretPath}/certprivkey.pem`).secretArn;
-        this.parameterExports["SSHKeyPair"] = "RES-RSA-KEY";
-        
-        // Network configuration
-        this.parameterExports["IsLoadBalancerInternetFacing"] = "false";
-        this.parameterExports["VpcId"] = props.vpcId;
-        this.parameterExports["InfrastructureHostSubnets"] =  privateSubnets.subnetIds;
-        this.parameterExports["LoadBalancerSubnets"] = privateSubnets.subnetIds;
-        this.parameterExports["VdiSubnets"] = privateSubnets.subnetIds;
-        this.parameterExports["CustomDomainNameforVDI"] = `vdi.${props.baseDomain}`;
-        this.parameterExports["ClientIp"] = "143.65.196.0/28";
-        this.parameterExports["ClientPrefixList"] = clientPrefixList.ref;
-        
-        // Active Directory Configuration
-        this.parameterExports["ADShortName"] = "crwin";
-        this.parameterExports["ActiveDirectoryName"] = "crwin.crnet.org";
-        this.parameterExports["LDAPConnectionURI"] = "ldap://crwin.crnet.org";
-        this.parameterExports["DisableADJoin"] = "False";
-        this.parameterExports["EnableLdapIDMapping"] = "True";
-        this.parameterExports["LDAPBase"] = "OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org";
-        this.parameterExports["ComputersOU"] = "OU=Computers,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org";
-        this.parameterExports["GroupsOU"] = "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org";
-        this.parameterExports["UsersOU"] = "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org";
-        this.parameterExports["SudoersOU"] = "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org";
-        this.parameterExports["SudoersGroupName"] = "AR - AWS - RES - Sudouers";
-        this.parameterExports["ServiceAccountUsername"] = "svcres";
-        this.parameterExports["ServiceAccountUserDN"] = "UID=svcres,OU=Service Accounts,OU=General Accounts and Groups"
-        this.parameterExports["ServiceAccountPasswordSecretArn"] = cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "ServiceAccountPasswordSecretArn", `res-ad-service-act-password`).secretArn;
-        this.parameterExports["DomainTLSCertificateSecretArn"] = "";
+        this.parameterExports = {
+            "EnvironmentName": `res-${props.envName}`,
+            "AdministratorEmail": adminEmail,
+            "CustomDomainNameforWebApp": props.baseDomain,
+            "ACMCertificateARNforWebApp": webAppAcmCert.certificateArn,
+            "SharedHomeFileSystemId": SharedHomeFileSystem.fileSystemId,
+            "InfrastructureHostAMI": "",
+            "IAMPermissionBoundary": "",
+            "CertificateSecretARNforVDI": cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "CertificateSecretforVDI", `${letsencryptSecretPath}/certcert.pem`).secretArn,
+            "PrivateKeySecretARNforVDI": cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "PrivateKeySecretforVDI", `${letsencryptSecretPath}/certprivkey.pem`).secretArn,
+            "SSHKeyPair": "RES-RSA-KEY",
+
+            // Network configuration
+            "IsLoadBalancerInternetFacing": "false",
+            "VpcId": props.vpcId,
+            "InfrastructureHostSubnets": privateSubnets.subnetIds,
+            "LoadBalancerSubnets": privateSubnets.subnetIds,
+            "VdiSubnets": privateSubnets.subnetIds,
+            "CustomDomainNameforVDI": `vdi.${props.baseDomain}`,
+            "ClientIp": "143.65.196.0/28",
+            "ClientPrefixList": clientPrefixList.ref,
+
+            // Active Directory Configuration
+            "ADShortName": "crwin",
+            "ActiveDirectoryName": "crwin.crnet.org",
+            "LDAPConnectionURI": "ldap://crwin.crnet.org",
+            "DisableADJoin": "False",
+            "EnableLdapIDMapping": "True",
+            "LDAPBase": "OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
+            "ComputersOU": "OU=Computers,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
+            "GroupsOU": "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
+            "UsersOU": "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
+            "SudoersOU": "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
+            "SudoersGroupName": "AR - AWS - RES - Sudouers",
+            "ServiceAccountUsername": "svcres",
+            "ServiceAccountUserDN": "UID=svcres,OU=Service Accounts,OU=General Accounts and Groups",
+            "ServiceAccountPasswordSecretArn": cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "ServiceAccountPasswordSecretArn", `res-ad-service-act-password`).secretArn,
+            "DomainTLSCertificateSecretArn": "",
+        };
 
     }
 }
