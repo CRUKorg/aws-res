@@ -16,7 +16,7 @@ export class ResBaseStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props: ResProps) {
         super(scope, id, props);
 
-        const adminEmail = "ammar.rahman@cancer.org.uk";
+        const adminEmail = "ammar.rahman+admin@cancer.org.uk";
         //certificate for VDI
         const letsencryptSecretPath = `${props.envName}/vdi/cert`;
         new Certbot(this, "VDICert", {
@@ -32,6 +32,7 @@ export class ResBaseStack extends cdk.Stack {
         const privateSubnets = vpc.selectSubnets({ subnetType: cdk.aws_ec2.SubnetType.PRIVATE_WITH_EGRESS, onePerAz: true });
         const publicSubnets = vpc.selectSubnets({ subnetType: cdk.aws_ec2.SubnetType.PUBLIC, onePerAz: true });
         //shared Home File System
+        //todo: fix security group and policy
         const SharedHomeFileSystem = new cdk.aws_efs.FileSystem(this, "SharedHomeFileSystem", {
             vpc: vpc,
             removalPolicy: cdk.RemovalPolicy.RETAIN,
@@ -103,156 +104,5 @@ export class ResBaseStack extends cdk.Stack {
         this.parameterExports["ServiceAccountPasswordSecretArn"] = cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "ServiceAccountPasswordSecretArn", `res-ad-service-act-password`).secretArn;
         this.parameterExports["DomainTLSCertificateSecretArn"] = "";
 
-
-        
-        
-        
-        
-        
-
-        
-        
-
-        
-        
-        
-        
-        
-
-        // const parameterExports = [
-        //     {
-        //         ParameterKey: "InfrastructureHostSubnets",
-        //         ParameterValue: privateSubnetString,
-        //     },
-        //     {
-        //         ParameterKey: "SharedHomeFileSystemId",
-        //         ParameterValue: SharedHomeFileSystem.fileSystemId,
-        //     },
-        //     {
-        //         ParameterKey: "SudoersGroupName",
-        //         ParameterValue: "AR - AWS - RES - Sudouers",
-        //     },
-        //     {
-        //         ParameterKey: "IAMPermissionBoundary",
-        //         ParameterValue: "null",
-        //     },
-        //     {
-        //         ParameterKey: "PrivateKeySecretARNforVDI",
-        //         ParameterValue: cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "PrivateKeySecretforVDI", `${letsencryptSecretPath}/certprivkey.pem`).secretArn,
-        //     },
-        //     {
-        //         ParameterKey: "CustomDomainNameforVDI",
-        //         ParameterValue: `vdi.${props.baseDomain}`,
-        //     },
-        //     {
-        //         ParameterKey: "ClientIp",
-        //         ParameterValue: "143.65.196.0/28",
-        //     },
-        //     {
-        //         ParameterKey: "ActiveDirectoryName",
-        //         ParameterValue: "crwin.crnet.org",
-        //     },
-        //     {
-        //         ParameterKey: "AdministratorEmail",
-        //         ParameterValue: adminEmail,
-        //     },
-        //     {
-        //         ParameterKey: "GroupsOU",
-        //         ParameterValue: "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
-        //     },
-        //     {
-        //         ParameterKey: "ClientPrefixList",
-        //         ParameterValue: clientPrefixList.ref,
-        //     },
-        //     {
-        //         ParameterKey: "InfrastructureHostAMI",
-        //         ParameterValue: "null",
-        //     },
-        //     {
-        //         ParameterKey: "ServiceAccountPasswordSecretArn",
-        //         ParameterValue: cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "ServiceAccountPasswordSecretArn", `res-ad-service-act-password`).secretArn,
-        //     },
-        //     {
-        //         ParameterKey: "CertificateSecretARNforVDI",
-        //         ParameterValue: cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "CertificateSecretforVDI", `${letsencryptSecretPath}/certcert.pem`).secretArn,
-        //     },
-        //     {
-        //         ParameterKey: "SSHKeyPair",
-        //         ParameterValue: "RES-RSA-KEY",
-        //     },
-        //     {
-        //         ParameterKey: "ACMCertificateARNforWebApp",
-        //         ParameterValue: webAppAcmCert.certificateArn,
-        //     },
-        //     {
-        //         ParameterKey: "ADShortName",
-        //         ParameterValue: "crwin",
-        //     },
-        //     {
-        //         ParameterKey: "EnableLdapIDMapping",
-        //         ParameterValue: "True",
-        //     },
-        //     {
-        //         ParameterKey: "EnvironmentName",
-        //         ParameterValue: `res-${props.envName}`,
-        //     },
-        //     {
-        //         ParameterKey: "ServiceAccountUsername",
-        //         ParameterValue: "svcres",
-        //     },
-        //     {
-        //         ParameterKey: "CustomDomainNameforWebApp",
-        //         ParameterValue: props.baseDomain,
-        //     },
-        //     {
-        //         ParameterKey: "SudoersOU",
-        //         ParameterValue: "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
-        //     },
-        //     {
-        //         ParameterKey: "LDAPBase",
-        //         ParameterValue: "OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
-        //     },
-        //     {
-        //         ParameterKey: "LoadBalancerSubnets",
-        //         ParameterValue: privateSubnetString,
-        //     },
-        //     {
-        //         ParameterKey: "VpcId",
-        //         ParameterValue: props.vpcId,
-        //     },
-        //     {
-        //         ParameterKey: "ComputersOU",
-        //         ParameterValue: "OU=Computers,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
-        //     },
-        //     {
-        //         ParameterKey: "DisableADJoin",
-        //         ParameterValue: "False",
-        //     },
-        //     {
-        //         ParameterKey: "DomainTLSCertificateSecretArn",
-        //         ParameterValue: "null",
-        //     },
-        //     {
-        //         ParameterKey: "VdiSubnets",
-        //         ParameterValue: privateSubnetString,
-        //     },
-        //     {
-        //         ParameterKey: "UsersOU",
-        //         ParameterValue: "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
-        //     },
-        //     {
-        //         ParameterKey: "IsLoadBalancerInternetFacing",
-        //         ParameterValue: "false",
-        //     },
-        //     {
-        //         ParameterKey: "LDAPConnectionURI",
-        //         ParameterValue: "ldaps://crwin.crnet.org",
-        //     },
-        // ];
-
-
-        // parameterExports.forEach((Parameter) => {
-        //     new cdk.CfnOutput(this, `RES${props.envName + Parameter.ParameterKey}`, { exportName: `RES${props.envName + Parameter.ParameterKey}`, value: Parameter.ParameterValue });
-        // });
     }
 }

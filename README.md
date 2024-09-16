@@ -4,7 +4,9 @@ This is a project to create a research engineering studio in AWS within CRUK con
 ## Installation
 ### Standard Prerequisites
 Secrets, as secrets can't be stored as part of the codebase, we would need to manually create the following secrets in the AWS Secrets Manager
-* Create `res-ad-service-act-password` secret in Secret Manager
+* Create `res-ad-service-act-password` secret in Secret Manager and add the following tags
+    * `res:EnvironmentName= res-prod`
+    * `res:ModuleName= cluster-manager`
 * Create RSA Key called `RES-RSA-KEY` and store in Secret Manager
 
 ### Networking Customisations
