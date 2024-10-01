@@ -76,5 +76,87 @@
   "hosted-zone:account=277707094382:domainName=compute.app.crnet.org:privateZone=false:region=eu-west-2": {
     "Id": "/hostedzone/Z1001483376YG1ZVY3FTX",
     "Name": "compute.app.crnet.org."
+  },
+  "vpc-provider:account=202435887288:filter.vpc-id=vpc-05a956a3e89cc14ce:region=eu-west-2:returnAsymmetricSubnets=true": {
+    "vpcId": "vpc-05a956a3e89cc14ce",
+    "vpcCidrBlock": "172.20.64.0/18",
+    "ownerAccountId": "701500798470",
+    "availabilityZones": [],
+    "subnetGroups": [
+      {
+        "name": "Private",
+        "type": "Private",
+        "subnets": [
+          {
+            "subnetId": "subnet-04bf07c85a38d9dd8",
+            "cidr": "172.20.112.0/21",
+            "availabilityZone": "eu-west-2a",
+            "routeTableId": "rtb-0cc21eead38f42178"
+          },
+          {
+            "subnetId": "subnet-0013a6b9f2462d312",
+            "cidr": "172.20.88.0/21",
+            "availabilityZone": "eu-west-2a",
+            "routeTableId": "rtb-081bc11bcaa8d0b47"
+          },
+          {
+            "subnetId": "subnet-0fcde8c889d80feed",
+            "cidr": "172.20.96.0/21",
+            "availabilityZone": "eu-west-2b",
+            "routeTableId": "rtb-024142dcad5eae866"
+          },
+          {
+            "subnetId": "subnet-0af2922317fed66fa",
+            "cidr": "172.20.120.0/22",
+            "availabilityZone": "eu-west-2b",
+            "routeTableId": "rtb-08f4a59aa9868f068"
+          },
+          {
+            "subnetId": "subnet-04090b46cf196b5b8",
+            "cidr": "172.20.104.0/21",
+            "availabilityZone": "eu-west-2c",
+            "routeTableId": "rtb-03943c8b887b510a7"
+          },
+          {
+            "subnetId": "subnet-05543cfef544842dd",
+            "cidr": "172.20.124.0/22",
+            "availabilityZone": "eu-west-2c",
+            "routeTableId": "rtb-05f3eae05122de704"
+          }
+        ]
+      },
+      {
+        "name": "Public",
+        "type": "Public",
+        "subnets": [
+          {
+            "subnetId": "subnet-0a54037c27d43f729",
+            "cidr": "172.20.64.0/21",
+            "availabilityZone": "eu-west-2a",
+            "routeTableId": "rtb-0a106965f26c51be9"
+          },
+          {
+            "subnetId": "subnet-052d2f9fa64eabfef",
+            "cidr": "172.20.72.0/21",
+            "availabilityZone": "eu-west-2b",
+            "routeTableId": "rtb-0a106965f26c51be9"
+          },
+          {
+            "subnetId": "subnet-01c0e033a4feb98b7",
+            "cidr": "172.20.80.0/21",
+            "availabilityZone": "eu-west-2c",
+            "routeTableId": "rtb-0a106965f26c51be9"
+          }
+        ]
+      }
+    ]
+  },
+  "hosted-zone:account=202435887288:domainName=int.compute.app.crnet.org:privateZone=false:region=eu-west-2": {
+    "Id": "/hostedzone/Z0557622H5VB519ZRJHW",
+    "Name": "int.compute.app.crnet.org."
+  },
+  "hosted-zone:account=202435887288:domainName=int.compute.app.crnet.org:region=eu-west-2": {
+    "Id": "/hostedzone/Z0557622H5VB519ZRJHW",
+    "Name": "int.compute.app.crnet.org."
   }
 }

@@ -15,16 +15,18 @@ export class ResBaseStack extends cdk.Stack {
     public parameterExports: { [parameterName: string]: any } = {};
     constructor(scope: Construct, id: string, props: ResProps) {
         super(scope, id, props);
-
+        cdk.Tags.of(this).add("res:EnvironmentName", `res-${props.envName}`)
+        cdk.Tags.of(this).add("res:ModuleName", "virtual-desktop-controller")
         const adminEmail = "ammar.rahman+admin@cancer.org.uk";
         //certificate for VDI
-        const letsencryptSecretPath = `${props.envName}/vdi/cert`;
-        new Certbot(this, "VDICert", {
+        const letsencryptSecretPath = `res-${props.envName}/vdi/cert/`;
+        new Certbot(this, "VDICertificate", {
             letsencryptDomains: `vdi.${props.baseDomain},*.vdi.${props.baseDomain}`,
             letsencryptEmail: "ammar.rahman@cancer.org.uk",
             hostedZoneNames: [`${props.baseDomain}`],
             certificateStorage: CertificateStorageType.SECRETS_MANAGER,
             secretsManagerPath: letsencryptSecretPath,
+            
         });
 
         //private subnets
@@ -42,7 +44,7 @@ export class ResBaseStack extends cdk.Stack {
         const webAppAcmCert = new cdk.aws_certificatemanager.Certificate(this, "WebAppAcmCert", {
             domainName: props.baseDomain,
             subjectAlternativeNames: [`*.${props.baseDomain}`],
-            validation: cdk.aws_certificatemanager.CertificateValidation.fromDns(),
+            validation: cdk.aws_certificatemanager.CertificateValidation.fromDns(cdk.aws_route53.HostedZone.fromLookup(this, "HostedZone", {domainName: props.baseDomain })),
         });
 
         const clientPrefixList = new cdk.aws_ec2.CfnPrefixList(this, "ClientPrefixList", {
@@ -73,8 +75,8 @@ export class ResBaseStack extends cdk.Stack {
             "SharedHomeFileSystemId": SharedHomeFileSystem.fileSystemId,
             "InfrastructureHostAMI": "",
             "IAMPermissionBoundary": "",
-            "CertificateSecretARNforVDI": cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "CertificateSecretforVDI", `${letsencryptSecretPath}/certcert.pem`).secretArn,
-            "PrivateKeySecretARNforVDI": cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "PrivateKeySecretforVDI", `${letsencryptSecretPath}/certprivkey.pem`).secretArn,
+            "CertificateSecretARNforVDI": cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "CertificateSecretforVDI", `${letsencryptSecretPath}cert.pem`).secretArn,
+            "PrivateKeySecretARNforVDI": cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "PrivateKeySecretforVDI", `${letsencryptSecretPath}privkey.pem`).secretArn,
             "SSHKeyPair": "RES-RSA-KEY",
 
             // Network configuration
