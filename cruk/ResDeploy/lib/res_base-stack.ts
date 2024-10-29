@@ -99,11 +99,12 @@ export class ResBaseStack extends cdk.Stack {
             "ComputersOU": "OU=Computers,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
             "GroupsOU": "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
             "UsersOU": "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
-            "SudoersOU": "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
+            // "SudoersOU": "OU=Groups,OU=RES,OU=CRUK Applications,DC=crwin,DC=crnet,DC=org",
             "SudoersGroupName": "AR - AWS - RES - Sudouers",
-            "ServiceAccountUsername": "svcres",
+            "ServiceAccountCredentialsSecretArn": cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "ServiceAccountCredentialsSecretArn", `res-ad-service-act-credentials`).secretArn,
+            // "ServiceAccountUsername": "svcres",
             "ServiceAccountUserDN": "UID=svcres,OU=Service Accounts,OU=General Accounts and Groups",
-            "ServiceAccountPasswordSecretArn": cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "ServiceAccountPasswordSecretArn", `res-ad-service-act-password`).secretArn,
+            // "ServiceAccountPasswordSecretArn": cdk.aws_secretsmanager.Secret.fromSecretNameV2(this, "ServiceAccountPasswordSecretArn", `res-ad-service-act-password`).secretArn,
             "DomainTLSCertificateSecretArn": "",
         };
 

@@ -9,7 +9,6 @@
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions
 #  and limitations under the License.
 
-import logging
 import ideaadministrator
 from ideaadministrator.app.cdk.idea_code_asset import IdeaCodeAsset, SupportedLambdaPlatforms
 from ideaadministrator.app.cdk.stacks import IdeaBaseStack
@@ -944,17 +943,17 @@ class ClusterStack(IdeaBaseStack):
         internal_alb_enable_access_log = self.context.config().get_bool(
             'cluster.load_balancers.internal_alb.access_logs', default=False)
 
-        access_log_destination = None
+        cluster_s3_bucket = None
         if external_alb_enable_access_log or internal_alb_enable_access_log:
-            access_log_destination = s3.Bucket.from_bucket_name(
+            cluster_s3_bucket = s3.Bucket.from_bucket_name(
                 scope=self.stack, id='cluster-s3-bucket', bucket_name=self.context.config().get_string('cluster.cluster_s3_bucket', required=True))
 
         if external_alb_enable_access_log:
             self.external_alb.log_access_logs(
-                access_log_destination, f'logs/{self.module_id}/alb-access-logs/external-alb')
+                cluster_s3_bucket, f'logs/{self.module_id}/alb-access-logs/external-alb')
         if internal_alb_enable_access_log:
             self.internal_alb.log_access_logs(
-                access_log_destination, f'logs/{self.module_id}/alb-access-logs/internal-alb')
+                cluster_s3_bucket, f'logs/{self.module_id}/alb-access-logs/internal-alb')
 
         # Drop invalid headers from requests to the ALB as a security measure
         self.external_alb.set_attribute(

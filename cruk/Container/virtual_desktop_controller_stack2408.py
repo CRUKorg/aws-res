@@ -36,10 +36,6 @@ from ideadatamodel import (
     constants,
     SocaAnyPayload
 )
-from ideadatamodel.constants import (
-    IDEA_TAG_MODULE_ID,
-    ARTIFACTS_BUCKET_PREFIX_NAME
-)
 from ideadatamodel.constants import IDEA_TAG_MODULE_ID
 from ideasdk.aws import AwsClientProvider, AWSClientProviderOptions
 from ideasdk.bootstrap import BootstrapUserDataBuilder
@@ -64,12 +60,11 @@ from aws_cdk import (
     aws_kms as kms,
     aws_apigateway as apigateway,
     aws_logs as logs,
-    aws_lambda,
     RemovalPolicy,
 )
 
 from aws_cdk.aws_events import Schedule
-from typing import Optional, List
+from typing import Optional
 
 
 class VirtualDesktopControllerStack(IdeaBaseStack):
@@ -113,42 +108,30 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
         }
         self.COMPONENT_DCV_HOST = 'host'
 
-        self.BROKER_CLIENT_COMMUNICATION_PORT = self.context.config().get_int(
-            'virtual-desktop-controller.dcv_broker.client_communication_port', required=True)
-        self.BROKER_AGENT_COMMUNICATION_PORT = self.context.config().get_int(
-            'virtual-desktop-controller.dcv_broker.agent_communication_port', required=True)
-        self.BROKER_GATEWAY_COMMUNICATION_PORT = self.context.config().get_int(
-            'virtual-desktop-controller.dcv_broker.gateway_communication_port', required=True)
+        self.BROKER_CLIENT_COMMUNICATION_PORT = self.context.config().get_int('virtual-desktop-controller.dcv_broker.client_communication_port', required=True)
+        self.BROKER_AGENT_COMMUNICATION_PORT = self.context.config().get_int('virtual-desktop-controller.dcv_broker.agent_communication_port', required=True)
+        self.BROKER_GATEWAY_COMMUNICATION_PORT = self.context.config().get_int('virtual-desktop-controller.dcv_broker.gateway_communication_port', required=True)
 
-        self.CLUSTER_ENDPOINTS_LAMBDA_ARN = self.context.config().get_string(
-            'cluster.cluster_endpoints_lambda_arn', required=True)
+        self.CLUSTER_ENDPOINTS_LAMBDA_ARN = self.context.config().get_string('cluster.cluster_endpoints_lambda_arn', required=True)
 
-        self.aws = AwsClientProvider(options=AWSClientProviderOptions(
-            profile=aws_profile, region=aws_region))
+        self.aws = AwsClientProvider(options=AWSClientProviderOptions(profile=aws_profile, region=aws_region))
 
         self.cluster = ExistingSocaCluster(self.context, self.stack)
         self.arn_builder = ArnBuilder(self.context.config())
 
-        self.create_tags_custom_resource = CreateTagsCustomResource(
-            context=self.context,
-            scope=self.stack,
-        )
-
-        self.lambda_layer_arn = self.context.config().get_string('shared_library_arn')
-        self.shared_library_lambda_layer = aws_lambda.LayerVersion.from_layer_version_arn(
-            self.stack, 'SharedLibraryLayer', self.lambda_layer_arn)
-
         self.oauth2_client_secret: Optional[OAuthClientIdAndSecret] = None
 
         self.custom_credential_broker_lambda_function: Optional[LambdaFunction] = None
+
         self.custom_credential_broker_api_gateway_rest_api: Optional[APIGatewayRestApi] = None
+        self.custom_credential_broker_api_gateway_rest_api_request_validator: Optional[apigateway.RequestValidator] = None
+        self.object_storage_temp_credentials: Optional[apigateway.Resource] = None
+        self.object_storage_temp_credentials_path_part: Optional[str] = None
+        self.custom_credential_broker_api_gateway_vpc_endpoint: Optional[VpcInterfaceEndpoint] = None
+        self.custom_credential_broker_api_gateway_vpc_endpoint_security_group: Optional[VpcEndpointSecurityGroup] = None
         self.custom_credential_broker_lambda_role: Optional[Role] = None
         self.s3_mount_base_bucket_read_only_role: Optional[Role] = None
         self.s3_mount_base_bucket_read_write_role: Optional[Role] = None
-
-        self.api_gateway_vpc_endpoint: Optional[VpcInterfaceEndpoint] = None
-        self.vdi_helper_api_gateway_rest_api: Optional[APIGatewayRestApi] = None
-        self.vdi_helper_lambda_function: Optional[LambdaFunction] = None
 
         self.dcv_host_role: Optional[Role] = None
         self.controller_role: Optional[Role] = None
@@ -158,8 +141,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
 
         self.dcv_host_security_group: Optional[VirtualDesktopBastionAccessSecurityGroup] = None
         self.controller_security_group: Optional[VirtualDesktopPublicLoadBalancerAccessSecurityGroup] = None
-        self.dcv_connection_gateway_security_group: Optional[
-            VirtualDesktopPublicLoadBalancerAccessSecurityGroup] = None
+        self.dcv_connection_gateway_security_group: Optional[VirtualDesktopPublicLoadBalancerAccessSecurityGroup] = None
         self.dcv_broker_security_group: Optional[VirtualDesktopBastionAccessSecurityGroup] = None
         self.dcv_broker_alb_security_group: Optional[VirtualDesktopBastionAccessSecurityGroup] = None
 
@@ -183,9 +165,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
         self.build_oauth2_client()
         self.update_cluster_manager_client_scopes()
 
-        # self.build_api_gateway_vpc_endpoint()
         self.build_custom_credential_broker_infra()
-        self.build_vdi_helper_infra()
 
         self.build_sqs_queues()
         self.build_scheduled_event_notification_infra()
@@ -203,8 +183,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
         self.build_cluster_settings()
 
     def setup_egress_rules_for_quic(self):
-        quic_supported = self.context.config().get_bool(
-            'virtual-desktop-controller.dcv_session.quic_support', required=True)
+        quic_supported = self.context.config().get_bool('virtual-desktop-controller.dcv_session.quic_support', required=True)
         if not quic_supported:
             return
 
@@ -229,10 +208,8 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
                     principals=[iam.AccountRootPrincipal()],
                     resources=["*"]),
                 iam.PolicyStatement(
-                    actions=["kms:GenerateDataKey", "kms:Decrypt",
-                             "kms:ReEncrypt*", "kms:DescribeKey", "kms:Encrypt"],
-                    principals=[iam.ServicePrincipal(
-                        'sns.amazonaws.com'), iam.ServicePrincipal('sqs.amazonaws.com')],
+                    actions=["kms:GenerateDataKey", "kms:Decrypt", "kms:ReEncrypt*", "kms:DescribeKey", "kms:Encrypt"],
+                    principals=[iam.ServicePrincipal('sns.amazonaws.com'), iam.ServicePrincipal('sqs.amazonaws.com')],
                     resources=["*"]),
             ]
         )
@@ -318,8 +295,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
     def subscribe_to_ec2_notification_events(self):
         ec2_event_sns_topic = sns.Topic.from_topic_arn(
             self.stack, f'{self.cluster_name}-{self.module_id}-ec2-state-change-topic',
-            self.context.config().get_string(
-                'cluster.ec2.state_change_notifications_sns_topic_arn', required=True)
+            self.context.config().get_string('cluster.ec2.state_change_notifications_sns_topic_arn', required=True)
         )
 
         ec2_event_sns_topic.add_subscription(sns_subscription.SqsSubscription(
@@ -388,10 +364,8 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             id='resource-server',
             identifier=self.module_id,
             scopes=[
-                cognito.ResourceServerScope(
-                    scope_name='read', scope_description='Allow Read Access'),
-                cognito.ResourceServerScope(
-                    scope_name='write', scope_description='Allow Write Access')
+                cognito.ResourceServerScope(scope_name='read', scope_description='Allow Read Access'),
+                cognito.ResourceServerScope(scope_name='write', scope_description='Allow Write Access')
             ]
         )
 
@@ -403,8 +377,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             id='dcv-session-manager-resource-server',
             identifier='dcv-session-manager',
             scopes=[
-                cognito.ResourceServerScope(
-                    scope_name='sm_scope', scope_description='sm_scope')
+                cognito.ResourceServerScope(scope_name='sm_scope', scope_description='sm_scope')
             ]
         )
 
@@ -419,8 +392,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
                 scopes=[
                     cognito.OAuthScope.custom(f'{self.module_id}/read'),
                     cognito.OAuthScope.custom(f'{self.module_id}/write'),
-                    cognito.OAuthScope.custom(
-                        f'{self.context.config().get_module_id(constants.MODULE_CLUSTER_MANAGER)}/read'),
+                    cognito.OAuthScope.custom(f'{self.context.config().get_module_id(constants.MODULE_CLUSTER_MANAGER)}/read'),
                     cognito.OAuthScope.custom('dcv-session-manager/sm_scope')
                 ]
             ),
@@ -431,8 +403,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
         client.node.add_dependency(self.resource_server)
 
         # read secret value by invoking custom resource
-        oauth_credentials_lambda_arn = self.context.config().get_string(
-            'identity-provider.cognito.oauth_credentials_lambda_arn', required=True)
+        oauth_credentials_lambda_arn = self.context.config().get_string('identity-provider.cognito.oauth_credentials_lambda_arn', required=True)
         client_secret = cdk.CustomResource(
             scope=self.stack,
             id=f'{self.module_id}-creds',
@@ -486,8 +457,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             timeout_seconds=180,
             role=update_cluster_manager_client_scope_lambda_role,
         )
-        update_cluster_manager_client_scope_lambda.node.add_dependency(
-            self.resource_server)
+        update_cluster_manager_client_scope_lambda.node.add_dependency(self.resource_server)
 
         cdk.CustomResource(
             self.stack,
@@ -503,26 +473,6 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
                 ]
             },
             resource_type='Custom::UpdateClusterManagerClient'
-        )
-
-
-    def build_api_gateway_vpc_endpoint(self):
-        api_gateway_vpc_endpoint_security_group = VpcEndpointSecurityGroup(
-            context=self.context,
-            scope=self.stack,
-            vpc=self.cluster.vpc,
-            name='API Gateway VPC Endpoint Security Group',
-        )
-
-        self.api_gateway_vpc_endpoint = VpcInterfaceEndpoint(
-            context=self.context,
-            scope=self.stack,
-            vpc=self.cluster.vpc,
-            service="execute-api",
-            vpc_endpoint_security_group=api_gateway_vpc_endpoint_security_group,
-            create_tags=self.create_tags_custom_resource,
-            lookup_supported_azs=False,
-            private_dns_enabled=False
         )
 
     def build_custom_credential_broker_infra(self):
@@ -572,8 +522,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
                 effect=iam.Effect.ALLOW,
                 actions=['sts:AssumeRole'],
                 principals=[
-                    iam.ArnPrincipal(
-                        self.custom_credential_broker_lambda_role.role_arn)
+                    iam.ArnPrincipal(self.custom_credential_broker_lambda_role.role_arn)
                 ]
             )
         )
@@ -582,8 +531,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
                 effect=iam.Effect.ALLOW,
                 actions=['sts:AssumeRole'],
                 principals=[
-                    iam.ArnPrincipal(
-                        self.custom_credential_broker_lambda_role.role_arn)
+                    iam.ArnPrincipal(self.custom_credential_broker_lambda_role.role_arn)
                 ]
             )
         )
@@ -598,8 +546,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             policy_template_name='custom-credential-broker.yml',
             vars=variable
         )
-        self.custom_credential_broker_lambda_role.add_managed_policy(
-            custom_credential_broker_lambda_role_policy)
+        self.custom_credential_broker_lambda_role.add_managed_policy(custom_credential_broker_lambda_role_policy)
 
         # Determine if we have a specific list of subnets configured for VDI
         configured_vdi_subnets = self.context.config().get_list(
@@ -636,8 +583,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             description=f'{self.module_id} lambda to provide temporary credentials for mounting object storage to virtual desktop infrastructure (VDI) instances.',
             scope=self.stack,
             vpc=self.cluster.vpc,
-            vpc_subnets=ec2.SubnetSelection(
-                subnets=self.cluster.private_subnets),
+            vpc_subnets=ec2.SubnetSelection(subnets=self.cluster.private_subnets),
             security_groups=[custom_credential_broker_security_group],
             environment={
                 "CLUSTER_NAME": f'{self.cluster_name}',
@@ -663,200 +609,119 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
                 lambda_platform=SupportedLambdaPlatforms.PYTHON
             ),
         )
-        self.custom_credential_broker_lambda_function.node.add_dependency(
-            custom_credential_broker_lambda_role_policy)
+        self.custom_credential_broker_lambda_function.node.add_dependency(custom_credential_broker_lambda_role_policy)
         self.add_common_tags(self.custom_credential_broker_lambda_function)
 
-        self.custom_credential_broker_api_gateway_rest_api = self._build_private_api_for_lambda(
-            lambda_function=self.custom_credential_broker_lambda_function,
-            api_name=api_gateway_name,
-            resource_name=constants.API_GATEWAY_CUSTOM_CREDENTIAL_BROKER_RESOURCE,
-            stage_name=constants.API_GATEWAY_CUSTOM_CREDENTIAL_BROKER_STAGE,
-            api_description=f'{self.module_id} API Gateway for custom credential broker',
-            http_method='GET',
-            cidr_blocks=vdi_cidr_blocks
-        )
-
-        self.custom_credential_broker_api_gateway_rest_api.node.add_dependency(
-            self.custom_credential_broker_lambda_function)
-
-    def build_vdi_helper_infra(self):
-        lambda_name = f'{self.module_id}-vdi-helper-lambda'
-        api_gateway_name = f'{self.module_id}-vdi-helper-api-gateway'
-
-        configured_vdi_subnets = self.context.config().get_list(
-            'vdc.dcv_session.network.private_subnets',
-            required=True
-        )
-        vdi_cidr_blocks = [
-            subnet['CidrBlock'] for subnet in self.aws.ec2().describe_subnets(SubnetIds=configured_vdi_subnets)['Subnets']
-        ]
-
-        vdi_helper_lambda_role = Role(
-            context=self.context,
-            name=f'{lambda_name}-role',
-            scope=self.stack,
-            assumed_by=['lambda'],
-            description=f'{lambda_name}-role',
-        )
-        self.vdi_helper_lambda_role_role_id = vdi_helper_lambda_role.role_id
-        vdi_helper_lambda_role_policy = ManagedPolicy(
-            context=self.context,
-            name=f'{lambda_name}-policy',
-            scope=self.stack,
-            managed_policy_name=f'{self.cluster_name}-{self.aws_region}-{lambda_name}-policy',
-            description='Required policy for RES VDI Helper Lambda.',
-            policy_template_name='vdi-helper.yml'
-        )
-        vdi_helper_lambda_role.add_managed_policy(
-            vdi_helper_lambda_role_policy)
-
-        self.vdi_helper_lambda_function = LambdaFunction(
-            context=self.context,
-            name=lambda_name,
-            description=f'{self.module_id} general purpose lambda for VDI operations.',
-            scope=self.stack,
-            vpc=self.cluster.vpc,
-            vpc_subnets=ec2.SubnetSelection(
-                subnets=self.cluster.private_subnets),
-            timeout_seconds=60,
-            idea_code_asset=IdeaCodeAsset(
-                lambda_package_name='res_vdi_helper',
-                lambda_platform=SupportedLambdaPlatforms.PYTHON
-            ),
-            environment={
-                # Required by shared library
-                "environment_name": f'{self.cluster_name}',
-            },
-            role=vdi_helper_lambda_role,
-        )
-        self.vdi_helper_lambda_function.add_layers(
-            self.shared_library_lambda_layer)
-        self.vdi_helper_lambda_function.node.add_dependency(
-            vdi_helper_lambda_role_policy)
-        self.add_common_tags(self.vdi_helper_lambda_function)
-
-        self.vdi_helper_api_gateway_rest_api = self._build_private_api_for_lambda(
-            lambda_function=self.vdi_helper_lambda_function,
-            api_name=api_gateway_name,
-            resource_name=constants.API_GATEWAY_VDI_HELPER_RESOURCE,
-            stage_name=constants.API_GATEWAY_VDI_HELPER_STAGE,
-            api_description=f'{self.module_id} API Gateway for VDI Helper',
-            http_method='POST',
-            cidr_blocks=vdi_cidr_blocks
-        )
-
-        self.vdi_helper_api_gateway_rest_api.node.add_dependency(
-            self.vdi_helper_lambda_function)
-
-    def _build_private_api_gateway_url(self, rest_api_id, stage_name):
-        # return f'https://{rest_api_id}-{self.api_gateway_vpc_endpoint.get_endpoint().vpc_endpoint_id}.execute-api.{self.aws_region}.amazonaws.com/{stage_name}/'
-        return f'https://execute-api.{self.aws_region}.amazonaws.com/{stage_name}/'
-
-    def _build_private_api_for_lambda(self, lambda_function: LambdaFunction, api_name: str, resource_name: str,
-                                      stage_name: str, api_description: str, http_method: str,
-                                      cidr_blocks: List[str]) -> APIGatewayRestApi:
-
-        api_gateway_rest_api_resource_policy = iam.PolicyDocument(
+        custom_credential_broker_api_gateway_rest_api_resource_policy = iam.PolicyDocument(
             statements=[
                 iam.PolicyStatement(
                     actions=["execute-api:Invoke"],
                     principals=[iam.ServicePrincipal("ec2.amazonaws.com")],
-                    resources=[self.arn_builder.api_gateway_execute_api_arn(
-                        "*",
-                        stage_name,
-                        http_method,
-                        resource_name
-                    )],
+                    resources=[self.arn_builder.custom_credential_broker_api_gateway_execute_api_arn('*')],
                     conditions={
                         "IpAddress": {
-                            "aws:SourceIp": cidr_blocks
+                            "aws:SourceIp": vdi_cidr_blocks
                         }
                     }
                 ),
             ]
         )
 
-        api_gateway_log_group = logs.LogGroup(
+        custom_credential_broker_api_gateway_rest_api_access_logs = logs.LogGroup(
             scope=self.stack,
-            id=f'{self.module_id}-{api_name}-access-logs',
+            id=f'{self.module_id}-custom-credential-broker-api-gateway-access-logs',
             retention=logs.RetentionDays.TEN_YEARS,
             removal_policy=RemovalPolicy.DESTROY,
         )
 
-        api_gateway_rest_api = APIGatewayRestApi(
+        # self.custom_credential_broker_api_gateway_vpc_endpoint_security_group = VpcEndpointSecurityGroup(
+        #     context=self.context,
+        #     scope=self.stack,
+        #     vpc=self.cluster.vpc,
+        #     name='Custom Credential Broker API Gateway VPC Endpoint Security Group',
+        # )
+
+        # create_tags = CreateTagsCustomResource(
+        #     context=self.context,
+        #     scope=self.stack,
+        # )
+
+        # self.custom_credential_broker_api_gateway_vpc_endpoint = VpcInterfaceEndpoint(
+        #     context=self.context,
+        #     scope=self.stack,
+        #     vpc=self.cluster.vpc,
+        #     service="execute-api",
+        #     vpc_endpoint_security_group=self.custom_credential_broker_api_gateway_vpc_endpoint_security_group,
+        #     create_tags=create_tags,
+        #     lookup_supported_azs=False
+        # )
+
+        self.custom_credential_broker_api_gateway_rest_api = APIGatewayRestApi(
             context=self.context,
             scope=self.stack,
-            name=api_name,
-            description=api_description,
-            policy=api_gateway_rest_api_resource_policy,
-            deploy_options=apigateway.StageOptions(
-                stage_name=stage_name,
-                access_log_destination=apigateway.LogGroupLogDestination(
-                    api_gateway_log_group),
-                access_log_format=apigateway.AccessLogFormat.json_with_standard_fields(
-                    caller=True,
-                    http_method=True,
-                    ip=True,
-                    protocol=True,
-                    request_time=True,
-                    resource_path=True,
-                    response_length=True,
-                    user=True,
-                    status=True,
-                )
-            ),
+            name=api_gateway_name,
+            description=f'{self.module_id} api gateway to provide temporary credentials for mounting object storage to virtual desktop infrastructure (VDI) instances.',
+            policy=custom_credential_broker_api_gateway_rest_api_resource_policy,
+            deploy_options=apigateway.StageOptions(stage_name=constants.API_GATEWAY_CUSTOM_CREDENTIAL_BROKER_STAGE,
+                                                   access_log_destination=apigateway.LogGroupLogDestination(custom_credential_broker_api_gateway_rest_api_access_logs),
+                                                   access_log_format=apigateway.AccessLogFormat.json_with_standard_fields(
+                                                       caller=True,
+                                                       http_method=True,
+                                                       ip=True,
+                                                       protocol=True,
+                                                       request_time=True,
+                                                       resource_path=True,
+                                                       response_length=True,
+                                                       user=True,
+                                                       status=True,
+                                                   )),
             endpoint_configuration=apigateway.EndpointConfiguration(
                 types=[apigateway.EndpointType.PRIVATE],
-                # vpc_endpoints=[self.api_gateway_vpc_endpoint.get_endpoint()],
+                # vpc_endpoints=[self.custom_credential_broker_api_gateway_vpc_endpoint.get_endpoint()],
             ),
-            default_method_options=apigateway.MethodOptions(
-                authorization_type=apigateway.AuthorizationType.IAM),
-            rest_api_name=api_name,
+            default_method_options=apigateway.MethodOptions(authorization_type=apigateway.AuthorizationType.IAM),
+            rest_api_name=api_gateway_name,
+        )
+        self.object_storage_temp_credentials_path_part = constants.API_GATEWAY_CUSTOM_CREDENTIAL_BROKER_RESOURCE
+        self.object_storage_temp_credentials = self.custom_credential_broker_api_gateway_rest_api.root.add_resource(
+            path_part=self.object_storage_temp_credentials_path_part
         )
 
-        resource = api_gateway_rest_api.root.add_resource(
-            path_part=resource_name
-        )
-
-        resource.add_method(
-            http_method=http_method,
+        self.object_storage_temp_credentials.add_method(
+            http_method="GET",
             integration=apigateway.LambdaIntegration(
-                handler=lambda_function
+                handler=self.custom_credential_broker_lambda_function
             ),
             authorization_type=apigateway.AuthorizationType.IAM
         )
 
-        apigateway.RequestValidator(
+        self.custom_credential_broker_api_gateway_rest_api.node.add_dependency(self.custom_credential_broker_lambda_function)
+
+        self.custom_credential_broker_api_gateway_rest_api_request_validator = apigateway.RequestValidator(
+            rest_api=self.custom_credential_broker_api_gateway_rest_api,
             scope=self.stack,
-            id=f'{self.module_id}-{api_name}-request-validator',
-            rest_api=api_gateway_rest_api,
+            id="custom-credential-broker-api-gateway-validator",
             validate_request_body=True,
             validate_request_parameters=True,
         )
 
         self.add_nag_suppression(
-            construct=api_gateway_rest_api,
-            suppressions=[IdeaNagSuppression(
-                rule_id='AwsSolutions-APIG6', reason='This is a private API Gateway endpoint')],
+            construct=self.custom_credential_broker_api_gateway_rest_api,
+            suppressions=[IdeaNagSuppression(rule_id='AwsSolutions-APIG6', reason='This is a private API Gateway endpoint')],
             apply_to_children=True
         )
 
         self.add_nag_suppression(
-            construct=api_gateway_rest_api,
-            suppressions=[IdeaNagSuppression(
-                rule_id='AwsSolutions-COG4', reason='This endpoint uses AWS IAM as the authorizer')],
+            construct=self.custom_credential_broker_api_gateway_rest_api,
+            suppressions=[IdeaNagSuppression(rule_id='AwsSolutions-COG4', reason='This endpoint uses AWS IAM as the authorizer')],
             apply_to_children=True
         )
 
         self.add_nag_suppression(
-            construct=api_gateway_rest_api,
-            suppressions=[IdeaNagSuppression(
-                rule_id='AwsSolutions-IAM4', reason='Suppressing AwsSolutions-IAM4 for CloudWatch logs role')],
+            construct=self.custom_credential_broker_api_gateway_rest_api,
+            suppressions=[IdeaNagSuppression(rule_id='AwsSolutions-IAM4', reason='Suppressing AwsSolutions-IAM4 for CloudWatch logs role')],
             apply_to_children=True
         )
-
-        return api_gateway_rest_api
 
     def build_dcv_host_infra(self):
         self.dcv_host_role = self._build_iam_role(
@@ -877,8 +742,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             name=f'{self.module_id}-dcv-host-security-group',
             scope=self.stack,
             vpc=self.cluster.vpc,
-            bastion_host_security_group=self.cluster.get_security_group(
-                'bastion-host'),
+            bastion_host_security_group=self.cluster.get_security_group('bastion-host'),
             description='Security Group for DCV Host',
             directory_service_access=True,
             component_name='DCV Host'
@@ -903,8 +767,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             target_type=elbv2.TargetType.INSTANCE,
             protocol=elbv2.ApplicationProtocol.HTTPS,
             vpc=self.cluster.vpc,
-            target_group_name=self.get_target_group_name(
-                f'{self.COMPONENT_DCV_BROKER}-c')
+            target_group_name=self.get_target_group_name(f'{self.COMPONENT_DCV_BROKER}-c')
         )
         client_target_group.configure_health_check(
             enabled=True,
@@ -938,8 +801,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             target_type=elbv2.TargetType.INSTANCE,
             protocol=elbv2.ApplicationProtocol.HTTPS,
             vpc=self.cluster.vpc,
-            target_group_name=self.get_target_group_name(
-                f'{self.COMPONENT_DCV_BROKER}-a')
+            target_group_name=self.get_target_group_name(f'{self.COMPONENT_DCV_BROKER}-a')
         )
         agent_target_group.configure_health_check(
             enabled=True,
@@ -973,8 +835,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             target_type=elbv2.TargetType.INSTANCE,
             protocol=elbv2.ApplicationProtocol.HTTPS,
             vpc=self.cluster.vpc,
-            target_group_name=self.get_target_group_name(
-                f'{self.COMPONENT_DCV_BROKER}-g')
+            target_group_name=self.get_target_group_name(f'{self.COMPONENT_DCV_BROKER}-g')
         )
         gateway_target_group.configure_health_check(
             enabled=True,
@@ -1006,20 +867,16 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             name=f'{self.module_id}-{self.COMPONENT_DCV_BROKER}-security-group',
             scope=self.stack,
             vpc=self.cluster.vpc,
-            bastion_host_security_group=self.cluster.get_security_group(
-                'bastion-host'),
+            bastion_host_security_group=self.cluster.get_security_group('bastion-host'),
             description='Security Group for Virtual Desktop DCV Broker',
             directory_service_access=False,
             component_name='DCV Broker'
         )
 
         # autoscaling group
-        dcv_broker_package_uri = self.stack.node.try_get_context(
-            'dcv_broker_bootstrap_package_uri')
-        https_proxy = self.context.config().get_string(
-            'cluster.network.https_proxy', required=False, default='')
-        no_proxy = self.context.config().get_string(
-            'cluster.network.no_proxy', required=False, default='')
+        dcv_broker_package_uri = self.stack.node.try_get_context('dcv_broker_bootstrap_package_uri')
+        https_proxy = self.context.config().get_string('cluster.network.https_proxy', required=False, default='')
+        no_proxy = self.context.config().get_string('cluster.network.no_proxy', required=False, default='')
         proxy_config = {}
         if Utils.is_not_empty(https_proxy):
             proxy_config = {
@@ -1043,8 +900,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             },
             proxy_config=proxy_config,
             bootstrap_source_dir_path=ideaadministrator.props.bootstrap_source_dir,
-            base_os=self.context.config().get_string(
-                'virtual-desktop-controller.dcv_broker.autoscaling.base_os', required=True)
+            base_os=self.context.config().get_string('virtual-desktop-controller.dcv_broker.autoscaling.base_os', required=True)
         ).build()
         substituted_userdata = cdk.Fn.sub(broker_userdata, {
             '__BROKER_CLIENT_TARGET_GROUP_ARN__': client_target_group.target_group_arn,
@@ -1064,8 +920,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             substituted_userdata=substituted_userdata,
             node_type=constants.NODE_TYPE_INFRA
         )
-        self.dcv_broker_autoscaling_group.node.add_dependency(
-            self.event_sqs_queue)
+        self.dcv_broker_autoscaling_group.node.add_dependency(self.event_sqs_queue)
 
         # receiving error jsii.errors.JSIIError: Cannot add AutoScalingGroup to 2nd Target Group
         # if same ASG is added to both internal and external target groups.
@@ -1106,17 +961,14 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             name=f'{self.module_id}-{self.COMPONENT_CONTROLLER}-security-group',
             scope=self.stack,
             vpc=self.cluster.vpc,
-            bastion_host_security_group=self.cluster.get_security_group(
-                'bastion-host'),
-            public_loadbalancer_security_group=self.cluster.get_security_group(
-                'external-load-balancer'),
+            bastion_host_security_group=self.cluster.get_security_group('bastion-host'),
+            public_loadbalancer_security_group=self.cluster.get_security_group('external-load-balancer'),
             description='Security Group for Virtual Desktop Controller',
             directory_service_access=True,
             component_name='Virtual Desktop Controller'
         )
 
-        controller_bootstrap_package_uri = self.stack.node.try_get_context(
-            'controller_bootstrap_package_uri')
+        controller_bootstrap_package_uri = self.stack.node.try_get_context('controller_bootstrap_package_uri')
         if Utils.is_empty(controller_bootstrap_package_uri):
             controller_bootstrap_package_uri = 'not-provided'
 
@@ -1126,10 +978,8 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             component_jinja='virtual-desktop-controller.yml'
         )
 
-        https_proxy = self.context.config().get_string(
-            'cluster.network.https_proxy', required=False, default='')
-        no_proxy = self.context.config().get_string(
-            'cluster.network.no_proxy', required=False, default='')
+        https_proxy = self.context.config().get_string('cluster.network.https_proxy', required=False, default='')
+        no_proxy = self.context.config().get_string('cluster.network.no_proxy', required=False, default='')
         proxy_config = {}
         if Utils.is_not_empty(https_proxy):
             proxy_config = {
@@ -1150,16 +1000,13 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
                 ],
                 proxy_config=proxy_config,
                 bootstrap_source_dir_path=ideaadministrator.props.bootstrap_source_dir,
-                base_os=self.context.config().get_string(
-                    'virtual-desktop-controller.controller.autoscaling.base_os', required=True)
+                base_os=self.context.config().get_string('virtual-desktop-controller.controller.autoscaling.base_os', required=True)
             ).build()),
             node_type=constants.NODE_TYPE_APP
         )
 
-        self.controller_auto_scaling_group.node.add_dependency(
-            self.event_sqs_queue)
-        self.controller_auto_scaling_group.node.add_dependency(
-            self.controller_sqs_queue)
+        self.controller_auto_scaling_group.node.add_dependency(self.event_sqs_queue)
+        self.controller_auto_scaling_group.node.add_dependency(self.controller_sqs_queue)
 
         # external target group
         external_target_group = elbv2.ApplicationTargetGroup(
@@ -1177,12 +1024,9 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             path='/healthcheck'
         )
 
-        external_https_listener_arn = self.context.config().get_string(
-            'cluster.load_balancers.external_alb.https_listener_arn', required=True)
-        path_patterns = self.context.config().get_list(
-            'virtual-desktop-controller.controller.endpoints.external.path_patterns', required=True)
-        priority = self.context.config().get_int(
-            'virtual-desktop-controller.controller.endpoints.external.priority', required=True)
+        external_https_listener_arn = self.context.config().get_string('cluster.load_balancers.external_alb.https_listener_arn', required=True)
+        path_patterns = self.context.config().get_list('virtual-desktop-controller.controller.endpoints.external.path_patterns', required=True)
+        priority = self.context.config().get_int('virtual-desktop-controller.controller.endpoints.external.priority', required=True)
         cdk.CustomResource(
             self.stack,
             'controller-endpoint-ext',
@@ -1223,12 +1067,9 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             path='/healthcheck'
         )
 
-        internal_https_listener_arn = self.context.config().get_string(
-            'cluster.load_balancers.internal_alb.https_listener_arn', required=True)
-        path_patterns = self.context.config().get_list(
-            'virtual-desktop-controller.controller.endpoints.internal.path_patterns', required=True)
-        priority = self.context.config().get_int(
-            'virtual-desktop-controller.controller.endpoints.internal.priority', required=True)
+        internal_https_listener_arn = self.context.config().get_string('cluster.load_balancers.internal_alb.https_listener_arn', required=True)
+        path_patterns = self.context.config().get_list('virtual-desktop-controller.controller.endpoints.internal.path_patterns', required=True)
+        priority = self.context.config().get_int('virtual-desktop-controller.controller.endpoints.internal.priority', required=True)
         cdk.CustomResource(
             self.stack,
             'controller-endpoint-int',
@@ -1261,15 +1102,8 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             external_target_group.target_group_arn
         ]
 
-    def host_modules(self) -> List[str]:
-        return self.context.config().get_list("global-settings.package_config.host_modules.pam", []) + self.context.config().get_list("global-settings.package_config.host_modules.nss", [])
-
-    def build_host_module_s3_url(self, host_module_name, os_arch):
-        return f's3://{ARTIFACTS_BUCKET_PREFIX_NAME}-{self.aws_region}/host_modules/{host_module_name}/latest/{os_arch}/{host_module_name}.so'
-
     def _build_auto_scaling_group(self, component_name: str, security_group: SecurityGroup, iam_role: Role, substituted_userdata: str, node_type: str) -> asg.AutoScalingGroup:
-        is_public = self.context.config().get_bool(
-            f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.public', False) and len(self.cluster.public_subnets) > 0
+        is_public = self.context.config().get_bool(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.public', False) and len(self.cluster.public_subnets) > 0
         if is_public:
             vpc_subnets = ec2.SubnetSelection(
                 subnets=self.cluster.public_subnets
@@ -1279,43 +1113,33 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
                 subnets=self.cluster.private_subnets
             )
 
-        base_os = self.context.config().get_string(
-            f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.base_os', required=True)
+        base_os = self.context.config().get_string(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.base_os', required=True)
         block_device_name = Utils.get_ec2_block_device_name(base_os)
-        enable_detailed_monitoring = self.context.config().get_bool(
-            f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.enable_detailed_monitoring', default=False)
-        metadata_http_tokens = self.context.config().get_string(
-            f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.metadata_http_tokens', required=True)
+        enable_detailed_monitoring = self.context.config().get_bool(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.enable_detailed_monitoring', default=False)
+        metadata_http_tokens = self.context.config().get_string(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.metadata_http_tokens', required=True)
 
-        kms_key_id = self.context.config().get_string(
-            'cluster.ebs.kms_key_id', required=False, default=None)
+        kms_key_id = self.context.config().get_string('cluster.ebs.kms_key_id', required=False, default=None)
         if kms_key_id is not None:
             kms_key_arn = self.get_kms_key_arn(kms_key_id)
-            ebs_kms_key = kms.Key.from_key_arn(
-                scope=self.stack, id=f'{component_name}-ebs-kms-key', key_arn=kms_key_arn)
+            ebs_kms_key = kms.Key.from_key_arn(scope=self.stack, id=f'{component_name}-ebs-kms-key', key_arn=kms_key_arn)
         else:
-            ebs_kms_key = kms.Alias.from_alias_name(
-                scope=self.stack, id=f'{component_name}-ebs-kms-key-default', alias_name='alias/aws/ebs')
+            ebs_kms_key = kms.Alias.from_alias_name(scope=self.stack, id=f'{component_name}-ebs-kms-key-default', alias_name='alias/aws/ebs')
 
         launch_template = ec2.LaunchTemplate(
             self.stack, f'{component_name}-lt',
-            instance_type=ec2.InstanceType(self.context.config().get_string(
-                f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.instance_type', required=True)),
+            instance_type=ec2.InstanceType(self.context.config().get_string(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.instance_type', required=True)),
             machine_image=ec2.MachineImage.generic_linux({
-                self.aws_region: self.context.config().get_string(
-                    f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.instance_ami', required=True)
+                self.aws_region: self.context.config().get_string(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.instance_ami', required=True)
             }),
             security_group=security_group,
             user_data=ec2.UserData.custom(substituted_userdata),
-            key_name=self.context.config().get_string(
-                'cluster.network.ssh_key_pair', required=True),
+            key_name=self.context.config().get_string('cluster.network.ssh_key_pair', required=True),
             block_devices=[ec2.BlockDevice(
                 device_name=block_device_name,
                 volume=ec2.BlockDeviceVolume(ebs_device=ec2.EbsDeviceProps(
                     encrypted=True,
                     kms_key=ebs_kms_key,
-                    volume_size=self.context.config().get_int(
-                        f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.volume_size', default=200),
+                    volume_size=self.context.config().get_int(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.volume_size', default=200),
                     volume_type=ec2.EbsDeviceVolumeType.GP3
                 ))
             )],
@@ -1332,27 +1156,18 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             launch_template=launch_template,
             instance_monitoring=asg.Monitoring.DETAILED if enable_detailed_monitoring else asg.Monitoring.BASIC,
             group_metrics=[asg.GroupMetrics.all()],
-            min_capacity=self.context.config().get_int(
-                f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.min_capacity', default=1),
-            max_capacity=self.context.config().get_int(
-                f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.max_capacity', default=3),
-            new_instances_protected_from_scale_in=self.context.config().get_bool(
-                f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.new_instances_protected_from_scale_in', default=True),
-            cooldown=cdk.Duration.minutes(self.context.config().get_int(
-                f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.cooldown_minutes', default=5)),
-            default_instance_warmup=cdk.Duration.minutes(self.context.config().get_int(
-                f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.default_instance_warmup', default=15)),
+            min_capacity=self.context.config().get_int(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.min_capacity', default=1),
+            max_capacity=self.context.config().get_int(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.max_capacity', default=3),
+            new_instances_protected_from_scale_in=self.context.config().get_bool(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.new_instances_protected_from_scale_in', default=True),
+            cooldown=cdk.Duration.minutes(self.context.config().get_int(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.cooldown_minutes', default=5)),
+            default_instance_warmup=cdk.Duration.minutes(self.context.config().get_int(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.default_instance_warmup', default=15)),
             health_check=asg.HealthCheck.elb(
-                grace=cdk.Duration.minutes(self.context.config().get_int(
-                    f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.elb_healthcheck.grace_time_minutes', default=15))
+                grace=cdk.Duration.minutes(self.context.config().get_int(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.elb_healthcheck.grace_time_minutes', default=15))
             ),
             update_policy=asg.UpdatePolicy.rolling_update(
-                max_batch_size=self.context.config().get_int(
-                    f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.rolling_update_policy.max_batch_size', default=1),
-                min_instances_in_service=self.context.config().get_int(
-                    f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.rolling_update_policy.min_instances_in_service', default=1),
-                pause_time=cdk.Duration.minutes(self.context.config().get_int(
-                    f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.rolling_update_policy.pause_time_minutes', default=15))
+                max_batch_size=self.context.config().get_int(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.rolling_update_policy.max_batch_size', default=1),
+                min_instances_in_service=self.context.config().get_int(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.rolling_update_policy.min_instances_in_service', default=1),
+                pause_time=cdk.Duration.minutes(self.context.config().get_int(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.rolling_update_policy.pause_time_minutes', default=15))
             ),
             termination_policies=[
                 asg.TerminationPolicy.DEFAULT
@@ -1361,30 +1176,24 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
 
         auto_scaling_group.scale_on_cpu_utilization(
             'cpu-utilization-scaling-policy',
-            target_utilization_percent=self.context.config().get_int(
-                f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.cpu_utilization_scaling_policy.target_utilization_percent', default=80),
-            estimated_instance_warmup=cdk.Duration.minutes(self.context.config().get_int(
-                f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.cpu_utilization_scaling_policy.estimated_instance_warmup_minutes', default=15))
+            target_utilization_percent=self.context.config().get_int(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.cpu_utilization_scaling_policy.target_utilization_percent', default=80),
+            estimated_instance_warmup=cdk.Duration.minutes(self.context.config().get_int(f'virtual-desktop-controller.{self.CONFIG_MAPPING[component_name]}.autoscaling.cpu_utilization_scaling_policy.estimated_instance_warmup_minutes', default=15))
         )
 
-        cdk.Tags.of(auto_scaling_group).add(
-            constants.IDEA_TAG_NODE_TYPE, node_type)
-        cdk.Tags.of(auto_scaling_group).add(constants.IDEA_TAG_NAME,
-                                            f'{self.cluster_name}-{self.module_id}-{component_name}')
+        cdk.Tags.of(auto_scaling_group).add(constants.IDEA_TAG_NODE_TYPE, node_type)
+        cdk.Tags.of(auto_scaling_group).add(constants.IDEA_TAG_NAME, f'{self.cluster_name}-{self.module_id}-{component_name}')
 
         if not enable_detailed_monitoring:
             self.add_nag_suppression(
                 construct=auto_scaling_group,
-                suppressions=[IdeaNagSuppression(
-                    rule_id='AwsSolutions-EC28', reason='detailed monitoring is a configurable option to save costs')],
+                suppressions=[IdeaNagSuppression(rule_id='AwsSolutions-EC28', reason='detailed monitoring is a configurable option to save costs')],
                 apply_to_children=True
             )
 
         self.add_nag_suppression(
             construct=auto_scaling_group,
             suppressions=[
-                IdeaNagSuppression(
-                    rule_id='AwsSolutions-AS3', reason='ASG notifications scaling notifications can be managed via AWS Console')
+                IdeaNagSuppression(rule_id='AwsSolutions-AS3', reason='ASG notifications scaling notifications can be managed via AWS Console')
             ]
         )
         return auto_scaling_group
@@ -1395,24 +1204,19 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             name=f'{self.module_id}-{self.COMPONENT_DCV_CONNECTION_GATEWAY}-security-group',
             scope=self.stack,
             vpc=self.cluster.vpc,
-            bastion_host_security_group=self.cluster.get_security_group(
-                'bastion-host'),
-            public_loadbalancer_security_group=self.cluster.get_security_group(
-                'external-load-balancer'),
+            bastion_host_security_group=self.cluster.get_security_group('bastion-host'),
+            public_loadbalancer_security_group=self.cluster.get_security_group('external-load-balancer'),
             description='Security Group for Virtual Desktop DCV Connection Gateway',
             directory_service_access=False,
             component_name='DCV Connection Gateway'
         )
 
-        dcv_connection_gateway_bootstrap_package_uri = self.stack.node.try_get_context(
-            'dcv_connection_gateway_package_uri')
+        dcv_connection_gateway_bootstrap_package_uri = self.stack.node.try_get_context('dcv_connection_gateway_package_uri')
         if Utils.is_empty(dcv_connection_gateway_bootstrap_package_uri):
             dcv_connection_gateway_bootstrap_package_uri = 'not-provided'
 
-        https_proxy = self.context.config().get_string(
-            'cluster.network.https_proxy', required=False, default='')
-        no_proxy = self.context.config().get_string(
-            'cluster.network.no_proxy', required=False, default='')
+        https_proxy = self.context.config().get_string('cluster.network.https_proxy', required=False, default='')
+        no_proxy = self.context.config().get_string('cluster.network.no_proxy', required=False, default='')
         proxy_config = {}
         if Utils.is_not_empty(https_proxy):
             proxy_config = {
@@ -1433,12 +1237,10 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             },
             proxy_config=proxy_config,
             bootstrap_source_dir_path=ideaadministrator.props.bootstrap_source_dir,
-            base_os=self.context.config().get_string(
-                'virtual-desktop-controller.dcv_connection_gateway.autoscaling.base_os', required=True)
+            base_os=self.context.config().get_string('virtual-desktop-controller.dcv_connection_gateway.autoscaling.base_os', required=True)
         ).build()
 
-        external_certificate_provided = self.context.config().get_bool(
-            'virtual-desktop-controller.dcv_connection_gateway.certificate.provided', required=True)
+        external_certificate_provided = self.context.config().get_bool('virtual-desktop-controller.dcv_connection_gateway.certificate.provided', required=True)
         if not external_certificate_provided:
             substituted_userdata = cdk.Fn.sub(connection_gateway_userdata, {
                 '__CERTIFICATE_SECRET_ARN__': self.dcv_connection_gateway_self_signed_cert.get_att_string('certificate_secret_arn'),
@@ -1464,10 +1266,8 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
 
     def _build_dcv_connection_gateway_network_infrastructure(self):
 
-        is_public = self.context.config().get_bool(
-            'cluster.load_balancers.external_alb.public', default=True)
-        external_nlb_subnets = self.cluster.existing_vpc.get_public_subnets(
-            SubnetFilterKeys.LOAD_BALANCER_SUBNETS) if is_public is True else self.cluster.existing_vpc.get_private_subnets(SubnetFilterKeys.LOAD_BALANCER_SUBNETS)
+        is_public = self.context.config().get_bool('cluster.load_balancers.external_alb.public', default=True)
+        external_nlb_subnets = self.cluster.existing_vpc.get_public_subnets(SubnetFilterKeys.LOAD_BALANCER_SUBNETS) if is_public is True else self.cluster.existing_vpc.get_private_subnets(SubnetFilterKeys.LOAD_BALANCER_SUBNETS)
         self.external_nlb = elbv2.NetworkLoadBalancer(
             self.stack,
             f'{self.cluster_name}-{self.module_id}-external-nlb',
@@ -1478,16 +1278,12 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
         )
 
         # enable access logs
-        external_alb_enable_access_log = self.context.config().get_bool(
-            'virtual-desktop-controller.external_nlb.access_logs', default=False)
+        external_alb_enable_access_log = self.context.config().get_bool('virtual-desktop-controller.external_nlb.access_logs', default=False)
         if external_alb_enable_access_log:
-            access_log_destination = s3.Bucket.from_bucket_name(
-                scope=self.stack, id='cluster-s3-bucket', bucket_name=self.context.config().get_string('cluster.cluster_s3_bucket', required=True))
-            self.external_nlb.log_access_logs(
-                access_log_destination, f'logs/{self.module_id}/external-nlb-access-logs')
+            access_log_destination = s3.Bucket.from_bucket_name(scope=self.stack, id='cluster-s3-bucket', bucket_name=self.context.config().get_string('cluster.cluster_s3_bucket', required=True))
+            self.external_nlb.log_access_logs(access_log_destination, f'logs/{self.module_id}/external-nlb-access-logs')
 
-        quic_supported = self.context.config().get_bool(
-            'virtual-desktop-controller.dcv_session.quic_support', required=True)
+        quic_supported = self.context.config().get_bool('virtual-desktop-controller.dcv_session.quic_support', required=True)
         protocol = elbv2.Protocol.TCP
         tg_suffix = 'TN'  # TCP Network
         if quic_supported:
@@ -1502,8 +1298,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             target_type=elbv2.TargetType.INSTANCE,
             vpc=self.cluster.vpc,
             targets=[self.dcv_connection_gateway_autoscaling_group],
-            target_group_name=self.get_target_group_name(
-                f'{self.COMPONENT_DCV_CONNECTION_GATEWAY}-{tg_suffix}'),
+            target_group_name=self.get_target_group_name(f'{self.COMPONENT_DCV_CONNECTION_GATEWAY}-{tg_suffix}'),
             health_check=elbv2.HealthCheck(
                 port='8989',
                 protocol=elbv2.Protocol.TCP
@@ -1512,10 +1307,8 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
         )
         # Can not provide stickiness attributes directly in CDK Construct. Refer - https://github.com/aws/aws-cdk/issues/17491
         # Documentation on attributes. Refer - https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-elasticloadbalancingv2-targetgroup-targetgroupattribute.html
-        dcv_connection_gateway_target_group.set_attribute(
-            'stickiness.enabled', 'true')
-        dcv_connection_gateway_target_group.set_attribute(
-            'stickiness.type', 'source_ip')
+        dcv_connection_gateway_target_group.set_attribute('stickiness.enabled', 'true')
+        dcv_connection_gateway_target_group.set_attribute('stickiness.type', 'source_ip')
 
         elbv2.NetworkListener(
             self.external_nlb,
@@ -1536,16 +1329,14 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             description='Allow TCP traffic access for HealthCheck to DCV Connection Gateway'
         )
 
-        cluster_prefix_list_id = self.context.config().get_string(
-            'cluster.network.cluster_prefix_list_id', required=True)
+        cluster_prefix_list_id = self.context.config().get_string('cluster.network.cluster_prefix_list_id', required=True)
         self.dcv_connection_gateway_security_group.add_ingress_rule(
             ec2.Peer.prefix_list(cluster_prefix_list_id),
             ec2.Port.all_traffic(),
             description='Allow all Traffic access from Cluster Prefix List to DCV Connection Gateway'
         )
 
-        prefix_list_ids = [i for i in self.context.config().get_list(
-            'cluster.network.prefix_list_ids', default=[]) if i is not None]
+        prefix_list_ids = [i for i in self.context.config().get_list('cluster.network.prefix_list_ids', default=[]) if i is not None]
         for prefix_list_id in prefix_list_ids:
             self.dcv_connection_gateway_security_group.add_ingress_rule(
                 ec2.Peer.prefix_list(prefix_list_id),
@@ -1554,8 +1345,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             )
 
     def _build_self_signed_cert_for_dcv_connection_gateway(self):
-        self_signed_certificate_lambda_arn = self.context.config().get_string(
-            'cluster.self_signed_certificate_lambda_arn', required=True)
+        self_signed_certificate_lambda_arn = self.context.config().get_string('cluster.self_signed_certificate_lambda_arn', required=True)
         self.dcv_connection_gateway_self_signed_cert = cdk.CustomResource(
             self.stack,
             f'{self.cluster_name}-{self.module_id}-external-cert-{self.COMPONENT_DCV_CONNECTION_GATEWAY}',
@@ -1575,8 +1365,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
         )
 
     def build_dcv_connection_gateway(self):
-        external_certificate_provided = self.context.config().get_bool(
-            'virtual-desktop-controller.dcv_connection_gateway.certificate.provided', required=True)
+        external_certificate_provided = self.context.config().get_bool('virtual-desktop-controller.dcv_connection_gateway.certificate.provided', required=True)
         if not external_certificate_provided:
             self._build_self_signed_cert_for_dcv_connection_gateway()
 
@@ -1584,28 +1373,21 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
         self._build_dcv_connection_gateway_network_infrastructure()
 
     def build_backups(self):
-        cluster_backups_enabled = self.context.config().get_string(
-            'cluster.backups.enabled', default=False)
+        cluster_backups_enabled = self.context.config().get_string('cluster.backups.enabled', default=False)
         if not cluster_backups_enabled:
             return
 
-        vdi_host_backup_enabled = self.context.config().get_bool(
-            'virtual-desktop-controller.vdi_host_backup.enabled', default=False)
+        vdi_host_backup_enabled = self.context.config().get_bool('virtual-desktop-controller.vdi_host_backup.enabled', default=False)
         if not vdi_host_backup_enabled:
             return
 
-        backup_vault_arn = self.context.config().get_string(
-            'cluster.backups.backup_vault.arn', required=True)
-        backup_role_arn = self.context.config().get_string(
-            'cluster.backups.role_arn', required=True)
+        backup_vault_arn = self.context.config().get_string('cluster.backups.backup_vault.arn', required=True)
+        backup_role_arn = self.context.config().get_string('cluster.backups.role_arn', required=True)
 
-        backup_role = iam.Role.from_role_arn(
-            self.stack, 'backup-role', backup_role_arn)
-        backup_vault = backup.BackupVault.from_backup_vault_arn(
-            self.stack, 'cluster-backup-vault', backup_vault_arn)
+        backup_role = iam.Role.from_role_arn(self.stack, 'backup-role', backup_role_arn)
+        backup_vault = backup.BackupVault.from_backup_vault_arn(self.stack, 'cluster-backup-vault', backup_vault_arn)
 
-        backup_plan_config = self.context.config().get_config(
-            'virtual-desktop-controller.vdi_host_backup.backup_plan')
+        backup_plan_config = self.context.config().get_config('virtual-desktop-controller.vdi_host_backup.backup_plan')
 
         self.backup_plan = BackupPlan(
             self.context, 'vdi-host-backup-plan', self.stack,
@@ -1631,8 +1413,7 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             'scheduled_event_transformer_lambda_role_name': self.scheduled_event_transformer_lambda_role.role_name,
             'scheduled_event_transformer_lambda_role_id': self.scheduled_event_transformer_lambda_role.role_id,
             'custom_credential_broker_lambda_function_arn': self.custom_credential_broker_lambda_function.function_arn,
-            'custom_credential_broker_api_gateway_url': self._build_private_api_gateway_url(self.custom_credential_broker_api_gateway_rest_api.rest_api_id, constants.API_GATEWAY_CUSTOM_CREDENTIAL_BROKER_STAGE) + constants.API_GATEWAY_CUSTOM_CREDENTIAL_BROKER_RESOURCE,
-            'vdi_helper_api_gateway_url': self._build_private_api_gateway_url(self.vdi_helper_api_gateway_rest_api.rest_api_id, constants.API_GATEWAY_VDI_HELPER_STAGE) + constants.API_GATEWAY_VDI_HELPER_RESOURCE,
+            'custom_credential_broker_api_gateway_url': self.custom_credential_broker_api_gateway_rest_api.url + self.object_storage_temp_credentials_path_part,
             'custom_credential_broker_api_gateway_id': self.custom_credential_broker_api_gateway_rest_api.rest_api_id,
             'custom_credential_broker_lambda_role_arn': self.custom_credential_broker_lambda_role.role_arn,
             's3_mount_base_bucket_read_only_role_arn': self.s3_mount_base_bucket_read_only_role.role_arn,
@@ -1659,33 +1440,19 @@ class VirtualDesktopControllerStack(IdeaBaseStack):
             'dcv_broker.asg_arn': self.dcv_broker_autoscaling_group.auto_scaling_group_arn,
             'dcv_connection_gateway.asg_name': self.dcv_connection_gateway_autoscaling_group.auto_scaling_group_name,
             'dcv_connection_gateway.asg_arn': self.dcv_connection_gateway_autoscaling_group.auto_scaling_group_arn,
-            'gateway_security_group_id': self.dcv_connection_gateway_security_group.security_group_id,
-            'vdi-helper-id': self.vdi_helper_lambda_role_role_id
+            'gateway_security_group_id': self.dcv_connection_gateway_security_group.security_group_id
         }
 
-        host_modules = self.host_modules()
-        for host_module_name in host_modules:
-            for os_arch in ['x86_64', 'arm64']:
-                cluster_settings[f'host_modules.{host_module_name}.{os_arch}.s3_url'] = self.build_host_module_s3_url(
-                    host_module_name, os_arch)
-
         if not self.context.config().get_bool('virtual-desktop-controller.dcv_connection_gateway.certificate.provided', default=False):
-            cluster_settings['dcv_connection_gateway.certificate.certificate_secret_arn'] = self.dcv_connection_gateway_self_signed_cert.get_att_string(
-                'certificate_secret_arn')
-            cluster_settings['dcv_connection_gateway.certificate.private_key_secret_arn'] = self.dcv_connection_gateway_self_signed_cert.get_att_string(
-                'private_key_secret_arn')
+            cluster_settings['dcv_connection_gateway.certificate.certificate_secret_arn'] = self.dcv_connection_gateway_self_signed_cert.get_att_string('certificate_secret_arn')
+            cluster_settings['dcv_connection_gateway.certificate.private_key_secret_arn'] = self.dcv_connection_gateway_self_signed_cert.get_att_string('private_key_secret_arn')
         else:
-            cluster_settings['dcv_connection_gateway.certificate.provided'] = self.context.config().get_string(
-                'virtual-desktop-controller.dcv_connection_gateway.certificate.provided', required=True)
-            cluster_settings['dcv_connection_gateway.certificate.certificate_secret_arn'] = self.context.config().get_string(
-                'virtual-desktop-controller.dcv_connection_gateway.certificate.certificate_secret_arn', required=True)
-            cluster_settings['dcv_connection_gateway.certificate.private_key_secret_arn'] = self.context.config().get_string(
-                'virtual-desktop-controller.dcv_connection_gateway.certificate.private_key_secret_arn', required=True)
-            cluster_settings['dcv_connection_gateway.certificate.custom_dns_name'] = self.context.config().get_string(
-                'virtual-desktop-controller.dcv_connection_gateway.certificate.custom_dns_name', required=True)
+            cluster_settings['dcv_connection_gateway.certificate.provided'] = self.context.config().get_string('virtual-desktop-controller.dcv_connection_gateway.certificate.provided', required=True)
+            cluster_settings['dcv_connection_gateway.certificate.certificate_secret_arn'] = self.context.config().get_string('virtual-desktop-controller.dcv_connection_gateway.certificate.certificate_secret_arn', required=True)
+            cluster_settings['dcv_connection_gateway.certificate.private_key_secret_arn'] = self.context.config().get_string('virtual-desktop-controller.dcv_connection_gateway.certificate.private_key_secret_arn', required=True)
+            cluster_settings['dcv_connection_gateway.certificate.custom_dns_name'] = self.context.config().get_string('virtual-desktop-controller.dcv_connection_gateway.certificate.custom_dns_name', required=True)
 
         if self.backup_plan is not None:
-            cluster_settings['vdi_host_backup.backup_plan.arn'] = self.backup_plan.get_backup_plan_arn(
-            )
+            cluster_settings['vdi_host_backup.backup_plan.arn'] = self.backup_plan.get_backup_plan_arn()
 
         self.update_cluster_settings(cluster_settings)

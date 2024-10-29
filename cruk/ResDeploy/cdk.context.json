@@ -158,5 +158,9 @@
   "hosted-zone:account=202435887288:domainName=int.compute.app.crnet.org:region=eu-west-2": {
     "Id": "/hostedzone/Z0557622H5VB519ZRJHW",
     "Name": "int.compute.app.crnet.org."
+  },
+  "hosted-zone:account=277707094382:domainName=compute.app.crnet.org:region=eu-west-2": {
+    "Id": "/hostedzone/Z1001483376YG1ZVY3FTX",
+    "Name": "compute.app.crnet.org."
   }
 }

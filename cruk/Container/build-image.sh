@@ -1,5 +1,5 @@
 #!/bin/bash
-RES_VERSION=2024.08-d09c2666
+RES_VERSION=2024.10-bb8c2292
 AWS_REGION=eu-west-2
 ECR_REPO="$(aws sts get-caller-identity --query Account --output text).dkr.ecr.${AWS_REGION}.amazonaws.com"
 # echo "ECR_REPO: ${ECR_REPO}"
